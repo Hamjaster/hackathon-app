@@ -162,13 +162,24 @@ AI never decides truth — only assists the crowd with readability and safety.
 
 ---
 
-## 13) Answer to “Should we add ERDs?”
+## 13) Edge Cases & Handling
+
+- **No tokens left:** user can still submit evidence, but can’t vote; earn tokens via evidence upvotes or a daily token drip.
+- **Evidence spam:** cap evidence submissions per rumor per user.
+- **Duplicate rumors:** AI duplicate detector suggests merge or link to existing rumor.
+- **Late evidence:** evidence added after resolution triggers a re‑evaluation window.
+- **Coordinated voting spikes:** temporary down‑weighting and audit log flag.
+- **Deleted evidence:** removes downstream influence and recomputes affected scores.
+
+---
+
+## 14) Answer to “Should we add ERDs?”
 
 **Yes, add a simple ERD.** It helps judges understand data flow quickly and is easy to include. Keep it minimal (rumors ↔ evidence ↔ evidence_votes, users ↔ votes, audit_log). A one‑page ERD diagram is enough.
 
 ---
 
-## 14) Diagram Placeholders (Markdown‑Only)
+## 15) Diagram Placeholders (Markdown‑Only)
 
 ### Architecture (Mermaid)
 
