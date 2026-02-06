@@ -1,15 +1,3 @@
-# Project Context Log — MVP Build Phase
-
-## Current Status — 2026-02-06 8:20 PM
-
-**Project:** Anonymous Campus Rumor Verification System
-
-**Phase:** Day 2 — MVP BUILD (coding all night until noon presentation tomorrow)
-
----
-
-## 🚨 HACKATHON RULES (UPDATED AT 8:00 PM)
-
 **Critical Constraints:**
 
 1. ✅ **No tech stack limitation** — use whatever you want (we chose Next.js + Supabase)
