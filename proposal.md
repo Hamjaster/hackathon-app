@@ -20,7 +20,6 @@ Campus rumors spread fast, but truth is hard to validate. We need a system where
 - Anonymous rumor submission
 - Evidence submission (links/images)
 - Evidence voting (helpful/misleading)
-- **Staking layer** (users can stake points for higher influence)
 - Rumor trust score updates (Bayesian, evidence‑weighted)
 - Hash‑based duplicate vote prevention
 - Log‑scaled vote impact to cap mob influence
@@ -32,7 +31,7 @@ Campus rumors spread fast, but truth is hard to validate. We need a system where
 - Full trust‑graph anomaly detection
 - DAG‑based dependency propagation for rumor deletions
 - Automated evidence credibility scoring
-
+- Optional **staking layer** (users can stake points for higher influence)
 
 ---
 
@@ -168,7 +167,6 @@ AI never decides truth — only assists the crowd with readability and safety.
 
 ## 13) Edge Cases & Handling
 
-- **No tokens left:** user can still submit evidence, but can’t vote; earn tokens via evidence upvotes or a daily token drip.
 - **Evidence spam:** cap evidence submissions per rumor per user.
 - **Duplicate rumors:** AI duplicate detector suggests merge or link to existing rumor.
 - **Late evidence:** evidence added after resolution triggers a re‑evaluation window.
@@ -177,55 +175,60 @@ AI never decides truth — only assists the crowd with readability and safety.
 
 ---
 
-## 14) Answer to “Should we add ERDs?”
+## 14) System Diagrams
 
-**Yes, add a simple ERD.** It helps judges understand data flow quickly and is easy to include. Keep it minimal (rumors ↔ evidence ↔ evidence_votes, users ↔ votes, audit_log). A one‑page ERD diagram is enough.
+### Architecture
 
----
-
-## 15) Diagram Placeholders (Markdown‑Only)
-
-### Architecture (Mermaid)
-
-```mermaid
-flowchart LR
-	U[User] --> UI[Frontend UI]
-	UI --> API[Backend API]
-	API --> DB[(Database)]
-	API --> RT[Realtime Updates]
-	DB --> RT
+```
+┌─────────┐
+│  User   │
+└────┬────┘
+     │
+     ▼
+┌──────────────┐
+│  Frontend    │
+│  (UI)        │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  Backend API │
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  Database    │
+└──────────────┘
 ```
 
-### ERD (Mermaid)
+### Entity Relationship Diagram
 
-```mermaid
-erDiagram
-	RUMORS ||--o{ EVIDENCE : has
-	EVIDENCE ||--o{ EVIDENCE_VOTES : receives
-	USERS ||--o{ VOTES : casts
-	RUMORS ||--o{ VOTES : receives
-	RUMORS ||--o{ AUDIT_LOG : tracked_by
+```
+RUMORS (1) ──── has ──── (*) EVIDENCE
+  │                           │
+  │                           │
+  │ receives                  │ receives
+  │                           │
+  (*) VOTES              (*) EVIDENCE_VOTES
+  │                           │
+  │ casts                     │ casts
+  │                           │
+USERS ───────────────────── USERS
+
+RUMORS (1) ──── tracked_by ──── (*) AUDIT_LOG
 ```
 
-### Flow (Mermaid)
+### Evidence Voting Flow
 
-```mermaid
-sequenceDiagram
-	participant U as User
-	participant UI as UI
-	participant API as Backend
-	participant DB as Database
+```
+1. User submits rumor
+   User → UI → API → Database (insert rumor)
 
-	U->>UI: Submit rumor
-	UI->>API: POST /rumor
-	API->>DB: Insert rumor
+2. User attaches evidence
+   User → UI → API → Database (insert evidence)
 
-	U->>UI: Attach evidence
-	UI->>API: POST /evidence
-	API->>DB: Insert evidence
-
-	U->>UI: Vote on evidence
-	UI->>API: POST /evidence-vote
-	API->>DB: Insert vote
-	API->>DB: Update trust score
+3. User votes on evidence
+   User → UI → API → Database (insert evidence vote)
+                  → Database (update trust score)
+                  → Database (log to audit_log)
 ```
