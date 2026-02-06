@@ -31,6 +31,7 @@ Campus rumors spread fast, but truth is hard to validate. We need a system where
 - Full trust‑graph anomaly detection
 - DAG‑based dependency propagation for rumor deletions
 - Automated evidence credibility scoring
+- Optional **staking layer** (users can stake points for higher influence)
 
 ---
 
