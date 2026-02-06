@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Server-side Supabase client with service role key (bypasses RLS)
-const supabaseUrl = process.env.SUPABASE_URL ;
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
@@ -29,6 +29,14 @@ export interface Database {
           updated_at: string;
           summary: string | null;
           content_warning: boolean;
+          // AI-enhanced fields
+          ai_summary: string | null;
+          is_time_bound: boolean | null;
+          expiry_date: string | null;
+          censored_content: string | null;
+          has_harmful_content: boolean | null;
+          ai_confidence: 'high' | 'medium' | 'low' | null;
+          ai_processed_at: string | null;
         };
         Insert: {
           id?: string;
@@ -39,6 +47,13 @@ export interface Database {
           updated_at?: string;
           summary?: string | null;
           content_warning?: boolean;
+          ai_summary?: string | null;
+          is_time_bound?: boolean | null;
+          expiry_date?: string | null;
+          censored_content?: string | null;
+          has_harmful_content?: boolean | null;
+          ai_confidence?: 'high' | 'medium' | 'low' | null;
+          ai_processed_at?: string | null;
         };
         Update: {
           content?: string;
@@ -47,6 +62,13 @@ export interface Database {
           updated_at?: string;
           summary?: string | null;
           content_warning?: boolean;
+          ai_summary?: string | null;
+          is_time_bound?: boolean | null;
+          expiry_date?: string | null;
+          censored_content?: string | null;
+          has_harmful_content?: boolean | null;
+          ai_confidence?: 'high' | 'medium' | 'low' | null;
+          ai_processed_at?: string | null;
         };
       };
       evidence: {

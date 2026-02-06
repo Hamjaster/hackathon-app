@@ -1,6 +1,5 @@
 import { supabase, type Rumor, type Evidence, type AuditLog } from "./supabase";
 import { createHash } from 'crypto';
-import { summarizeAndCheckSafety } from './ai/gemini';
 
 type RumorStatus = 'Active' | 'Verified' | 'Debunked' | 'Inconclusive';
 
@@ -125,22 +124,42 @@ export class DatabaseStorage implements IStorage {
 
     if (error) throw error;
 
-    // AI add-on (proposal §7): summarize + optional harmful-content flag
+    // 🚀 Trigger Inngest workflow for AI background processing (non-blocking)
+    // This replaces the old synchronous AI processing with async workflow
     try {
-      const { summary, contentWarning } = await summarizeAndCheckSafety(content);
-      if (summary !== null || contentWarning) {
-        await supabase
-          .from('rumors')
-          .update({
-            summary: summary ?? undefined,
-            content_warning: contentWarning,
-          })
-          .eq('id', data.id);
-        return { ...data, summary: summary ?? null, content_warning: contentWarning };
+      const { inngest } = await import('./inngest/client');
+      await inngest.send({
+        name: "rumor/created",
+        data: {
+          rumorId: data.id,
+          content: data.content,
+          createdAt: data.created_at,
+        },
+      });
+      console.log(`[Storage] ✅ Inngest event triggered for rumor ${data.id}`);
+    } catch (inngestError) {
+      // Don't fail rumor creation if Inngest fails
+      console.error('[Storage] ⚠️ Failed to trigger Inngest event:', inngestError);
+
+      // Fallback: Try old synchronous method if Inngest is unavailable
+      try {
+        const { summarizeAndCheckSafety } = await import('./ai/gemini');
+        const { summary, contentWarning } = await summarizeAndCheckSafety(content);
+        if (summary !== null || contentWarning) {
+          await supabase
+            .from('rumors')
+            .update({
+              summary: summary ?? undefined,
+              content_warning: contentWarning,
+            })
+            .eq('id', data.id);
+          return { ...data, summary: summary ?? null, content_warning: contentWarning };
+        }
+      } catch (e) {
+        console.warn('[createRumor] Fallback AI step also failed:', e instanceof Error ? e.message : e);
       }
-    } catch (e) {
-      console.warn('[createRumor] AI step failed:', e instanceof Error ? e.message : e);
     }
+
     return data;
   }
 

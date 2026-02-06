@@ -9,30 +9,30 @@ import { randomUUID } from "crypto";
 
 // Mock auth middleware for local development
 function setupMockAuth(app: Express) {
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'hackathon-dev-secret-2026',
-    resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false }
-  }));
+    app.use(session({
+        secret: process.env.SESSION_SECRET || 'hackathon-dev-secret-2026',
+        resave: false,
+        saveUninitialized: true,
+        cookie: { secure: false }
+    }));
 
-  app.use((req: any, res, next) => {
-    if (!req.session.userId) {
-      req.session.userId = randomUUID();
-    }
-    req.user = { id: req.session.userId };
-    req.isAuthenticated = () => true; // Always authenticated for local dev
-    next();
-  });
+    app.use((req: any, res, next) => {
+        if (!req.session.userId) {
+            req.session.userId = randomUUID();
+        }
+        req.user = { id: req.session.userId };
+        req.isAuthenticated = () => true; // Always authenticated for local dev
+        next();
+    });
 }
 
 declare global {
-  namespace Express {
-    interface Request {
-      isAuthenticated(): boolean;
-      user?: { id: string };
+    namespace Express {
+        interface Request {
+            isAuthenticated(): boolean;
+            user?: { id: string };
+        }
     }
-  }
 }
 
 export async function registerRoutes(
@@ -41,6 +41,10 @@ export async function registerRoutes(
 ): Promise<Server> {
     // Mock Auth Setup for local development
     setupMockAuth(app);
+
+    // Inngest endpoint for background AI processing
+    const { inngestHandler } = await import("./inngest/serve");
+    app.use("/api/inngest", inngestHandler);
 
     // Apply rate limiting to all API routes
     app.use("/api", rateLimit);

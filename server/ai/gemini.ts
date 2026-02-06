@@ -5,7 +5,7 @@
  */
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODEL = "gemini-1.5-flash"; // Free tier, fast
+const MODEL = "gemini-2.5-flash"; // Free tier, fast
 
 export interface SummarizeResult {
   summary: string | null;
@@ -52,7 +52,7 @@ Reply with the 1-2 sentence summary, then a newline, then either SAFE or WARNING
     const data = (await res.json()) as {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
-      };
+      }>;
     };
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
