@@ -2,7 +2,7 @@
 
 ## 📄 Day 1 Submission
 
-**Team:** Solo
+**Team:** 4 Members
 **Date:** February 6, 2026
 
 ---
