@@ -13,6 +13,12 @@ async function buildApp() {
     // Build client with Vite
     await build({
         root: path.join(root, "client"),
+        resolve: {
+            alias: {
+                "@": path.join(root, "client", "src"),
+                "@shared": path.join(root, "shared"),
+            },
+        },
         build: {
             outDir: path.join(root, "dist/public"),
             emptyOutDir: true,
@@ -38,6 +44,13 @@ async function buildApp() {
             "@supabase/supabase-js",
             "express-session",
             "memorystore",
+            "vite",
+            "esbuild",
+            "lightningcss",
+            "@babel/*",
+            "rollup",
+            "postcss",
+            "tailwindcss",
         ],
         loader: {
             ".node": "copy",

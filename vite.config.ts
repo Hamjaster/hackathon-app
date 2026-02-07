@@ -1,25 +1,44 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
+    plugins: [
+        react({
+            jsxRuntime: "automatic",
+        }),
+    ],
+    resolve: {
+        alias: {
+            "@": path.join(__dirname, "client", "src"),
+            "@shared": path.join(__dirname, "shared"),
+        },
     },
-  },
-  root: path.resolve(import.meta.dirname, "client"),
-  envDir: path.resolve(import.meta.dirname),
-  build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
-    emptyOutDir: true,
-  },
-  server: {
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
+    root: path.join(__dirname, "client"),
+    envDir: __dirname,
+    build: {
+        outDir: path.join(__dirname, "dist", "public"),
+        emptyOutDir: true,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    "react-vendor": ["react", "react-dom"],
+                    "ui-vendor": [
+                        "@radix-ui/react-dialog",
+                        "@radix-ui/react-dropdown-menu",
+                    ],
+                },
+            },
+        },
     },
-  },
+    server: {
+        fs: {
+            strict: true,
+            deny: ["**/.*"],
+        },
+    },
 });
