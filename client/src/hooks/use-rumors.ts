@@ -156,7 +156,6 @@ export function useVoteEvidence() {
             queryClient.invalidateQueries({
                 queryKey: [api.rumors.get.path, variables.rumorId],
             });
-            // Also invalidate user stats so points/staked amounts update immediately
             queryClient.invalidateQueries({
                 queryKey: [api.user.stats.path],
             });

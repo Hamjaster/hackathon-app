@@ -18,9 +18,14 @@ import { api } from "@shared/routes";
 interface VoteWithStakeDialogProps {
     evidenceId: string;
     isHelpful: boolean;
-    onVote: (evidenceId: string, isHelpful: boolean, stakeAmount: number) => void;
+    onVote: (
+        evidenceId: string,
+        isHelpful: boolean,
+        stakeAmount: number,
+    ) => void;
     isVoting: boolean;
     currentVotes: number;
+    disabled?: boolean;
 }
 
 export function VoteWithStakeDialog({
@@ -29,6 +34,7 @@ export function VoteWithStakeDialog({
     onVote,
     isVoting,
     currentVotes,
+    disabled = false,
 }: VoteWithStakeDialogProps) {
     const [open, setOpen] = useState(false);
     const [stakeAmount, setStakeAmount] = useState([1]);
@@ -72,7 +78,12 @@ export function VoteWithStakeDialog({
                     variant="ghost"
                     size="sm"
                     className={`h-7 px-2 text-xs ${colorClass}`}
-                    disabled={isVoting}
+                    disabled={isVoting || disabled}
+                    title={
+                        disabled
+                            ? "Voting closed - rumor is resolved or expired"
+                            : undefined
+                    }
                 >
                     <Icon className="h-3 w-3 mr-1.5" />
                     {voteType} ({currentVotes})
@@ -124,7 +135,8 @@ export function VoteWithStakeDialog({
                             disabled={availablePoints < 1}
                         />
                         <p className="text-xs text-muted-foreground">
-                            Stake between 1-10 points (max: {Math.min(10, availablePoints)})
+                            Stake between 1-10 points (max:{" "}
+                            {Math.min(10, availablePoints)})
                         </p>
                     </div>
 
@@ -142,7 +154,8 @@ export function VoteWithStakeDialog({
                             </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                            Based on your reputation ({(reputation * 100).toFixed(0)}%) and stake
+                            Based on your reputation (
+                            {(reputation * 100).toFixed(0)}%) and stake
                         </p>
                     </div>
 
@@ -174,7 +187,9 @@ export function VoteWithStakeDialog({
                                 : ""
                         }
                     >
-                        {isVoting ? "Voting..." : `Stake ${stakeAmount[0]} & Vote`}
+                        {isVoting
+                            ? "Voting..."
+                            : `Stake ${stakeAmount[0]} & Vote`}
                     </Button>
                 </DialogFooter>
             </DialogContent>

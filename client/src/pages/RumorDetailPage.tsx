@@ -2,6 +2,7 @@ import { useRoute } from "wouter";
 import { useRumor, useVoteEvidence } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { TrustScore } from "@/components/TrustScore";
+import { CountdownTimer } from "@/components/CountdownTimer";
 import { AddEvidenceDialog } from "@/components/AddEvidenceDialog";
 import { UserStatsCard } from "@/components/UserStatsCard";
 import { VoteWithStakeDialog } from "@/components/VoteWithStakeDialog";
@@ -35,12 +36,16 @@ import {
 export default function RumorDetailPage() {
     const [match, params] = useRoute("/rumor/:id");
     const id = params?.id || "";
-    const { data: rumor, isLoading, error } = useRumor(id);
+    const { data: rumor, isLoading, error, refetch } = useRumor(id);
     const voteEvidence = useVoteEvidence();
 
     if (isLoading) return <DetailSkeleton />;
     if (error || !rumor)
         return <div className="p-20 text-center">Rumor not found</div>;
+
+    const expiryDate = (rumor as any).expiry_date;
+    const isExpired = expiryDate && new Date(expiryDate) < new Date();
+    const isVotingBlocked = (rumor as any).status !== "Active" || isExpired;
 
     const supportingEvidence = rumor.evidence.filter(
         (e) => (e as any).evidence_type === "support",
@@ -80,7 +85,38 @@ export default function RumorDetailPage() {
                                 <span>
                                     RUMOR_ID: {id.substring(0, 8).toUpperCase()}
                                 </span>
-                                <span>•</span>
+                                {((rumor as any).score_above_75_since ||
+                                    (rumor as any).score_below_25_since) && (
+                                    <>
+                                        <span>•</span>
+                                        <CountdownTimer
+                                            targetDate={
+                                                (rumor as any)
+                                                    .score_above_75_since ||
+                                                (rumor as any)
+                                                    .score_below_25_since
+                                            }
+                                            type="resolution"
+                                            status={(rumor as any).status}
+                                            onExpire={() => refetch()}
+                                        />
+                                        <span>•</span>
+                                    </>
+                                )}
+                                {(rumor as any).expiry_date && (
+                                    <>
+                                        <span>•</span>
+                                        <CountdownTimer
+                                            targetDate={
+                                                (rumor as any).expiry_date
+                                            }
+                                            type="expiry"
+                                            status={(rumor as any).status}
+                                            onExpire={() => refetch()}
+                                        />
+                                        <span>•</span>
+                                    </>
+                                )}
                                 <span>
                                     {(rumor as any).created_at
                                         ? format(
@@ -214,6 +250,7 @@ export default function RumorDetailPage() {
                                             item={item}
                                             onVote={handleVote}
                                             isVoting={voteEvidence.isPending}
+                                            disabled={isVotingBlocked}
                                         />
                                     ))
                                 )}
@@ -245,6 +282,7 @@ export default function RumorDetailPage() {
                                             item={item}
                                             onVote={handleVote}
                                             isVoting={voteEvidence.isPending}
+                                            disabled={isVotingBlocked}
                                         />
                                     ))
                                 )}
@@ -282,10 +320,12 @@ function EvidenceCard({
     item,
     onVote,
     isVoting,
+    disabled = false,
 }: {
     item: any;
     onVote: any;
     isVoting: boolean;
+    disabled?: boolean;
 }) {
     return (
         <Card className="bg-card/30 border-border/50 hover:bg-card/50 transition-colors">
@@ -300,7 +340,9 @@ function EvidenceCard({
                             src={item.content_url}
                             alt="Evidence attachment"
                             className="w-full max-h-52 object-contain bg-black/10 cursor-pointer"
-                            onClick={() => window.open(item.content_url, '_blank')}
+                            onClick={() =>
+                                window.open(item.content_url, "_blank")
+                            }
                         />
                     </div>
                 )}
@@ -331,6 +373,7 @@ function EvidenceCard({
                             onVote={onVote}
                             isVoting={isVoting}
                             currentVotes={item.helpful_votes}
+                            disabled={disabled}
                         />
                         <VoteWithStakeDialog
                             evidenceId={item.id}
@@ -338,6 +381,7 @@ function EvidenceCard({
                             onVote={onVote}
                             isVoting={isVoting}
                             currentVotes={item.misleading_votes}
+                            disabled={disabled}
                         />
                     </div>
                 </div>
