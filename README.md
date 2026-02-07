@@ -1,4 +1,4 @@
-# 🛡️ CampusTrust - Anonymous Rumor Verification System
+# 🛡️ CampusTrust - Anonymous Rumor Verification System (NUST Olympiad Hackathon)
 
 A decentralized truth verification system using Bayesian inference, cryptographic anonymity, and game-theoretic incentives to separate fact from fiction on campus.
 
@@ -197,7 +197,7 @@ MIT
 
 ## 👥 Team
 
-Hackathon Project 2026
+FYP Sprint Hackathon Project 2026
 
 ---
 
