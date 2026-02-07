@@ -5,17 +5,19 @@ import { api } from "@shared/routes";
 import { z } from "zod";
 import { rateLimit } from "./middleware/rateLimit";
 import session from "express-session";
-import { randomUUID } from "crypto";
+import { randomUUID, createHash } from "crypto";
 import { demoRouter } from "./demo-resolution";
 
 // User ID authentication for local development
 function setupMockAuth(app: Express) {
-    app.use(session({
-        secret: process.env.SESSION_SECRET || 'hackathon-dev-secret-2026',
-        resave: false,
-        saveUninitialized: false, // Don't auto-create sessions
-        cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
-    }));
+    app.use(
+        session({
+            secret: process.env.SESSION_SECRET || "hackathon-dev-secret-2026",
+            resave: false,
+            saveUninitialized: false, // Don't auto-create sessions
+            cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 }, // 7 days
+        }),
+    );
 
     app.use((req: any, res, next) => {
         // Only set user if userId exists in session
@@ -39,7 +41,7 @@ declare global {
     }
 }
 
-declare module 'express-session' {
+declare module "express-session" {
     interface SessionData {
         userId?: string;
     }
@@ -135,12 +137,20 @@ export async function registerRoutes(
 
         try {
             const input = api.evidence.create.input.parse(req.body);
+            const userId = req.user!.id;
+            const salt = process.env.VOTE_SALT || "HACKATHON_SECRET_SALT_2026";
+            // Creator hash uses same format as vote hash (userId:salt) so we can compare
+            const creatorHash = createHash("sha256")
+                .update(`${userId}:${salt}:creator`)
+                .digest("hex");
+
             const evidence = await storage.createEvidence({
                 rumorId: req.params.id as string,
                 evidenceType: input.isSupporting ? "support" : "dispute",
                 contentType: input.url ? "link" : "text",
                 contentUrl: input.url ?? undefined,
                 contentText: input.content,
+                creatorHash,
             });
             res.status(201).json(evidence);
         } catch (err) {
@@ -156,7 +166,9 @@ export async function registerRoutes(
             return res.status(401).json({ message: "Unauthorized" });
 
         try {
-            const { isHelpful, stakeAmount } = api.evidence.vote.input.parse(req.body);
+            const { isHelpful, stakeAmount } = api.evidence.vote.input.parse(
+                req.body,
+            );
             const userId = req.user!.id; // Mock user ID from session
 
             const result = await storage.createVote({
@@ -188,15 +200,15 @@ export async function registerRoutes(
 
         try {
             const userId = req.user!.id;
-            const salt = process.env.VOTE_SALT || 'HACKATHON_SECRET_SALT_2026';
+            const salt = process.env.VOTE_SALT || "HACKATHON_SECRET_SALT_2026";
 
-            // Generate vote hash for this user (consistent across all their votes)
-            const { createHash } = await import('crypto');
-            const voteHash = createHash('sha256')
-                .update(`${userId}:${salt}:user_stats`)
-                .digest('hex');
+            // Generate user hash (consistent across all their votes)
+            const { createHash } = await import("crypto");
+            const userHash = createHash("sha256")
+                .update(`${userId}:${salt}`)
+                .digest("hex");
 
-            const stats = await storage.getUserStats(voteHash);
+            const stats = await storage.getUserStats(userHash);
 
             if (!stats) {
                 // User hasn't voted yet, return defaults
@@ -205,18 +217,16 @@ export async function registerRoutes(
                     totalPoints: 100,
                     pointsStaked: 0,
                     correctVotes: 0,
-                    totalVotes: 0
+                    totalVotes: 0,
                 });
             }
 
             res.json(stats);
         } catch (err) {
-            console.error('User stats error:', err);
+            console.error("User stats error:", err);
             res.status(500).json({ message: "Internal server error" });
         }
     });
-
-
 
     app.get("/api/logout", (req: any, res) => {
         req.session.destroy(() => {
@@ -234,6 +244,11 @@ async function seedData() {
         if (existingRumors.length === 0) {
             console.log("Seeding data...");
 
+            const salt = process.env.VOTE_SALT || "HACKATHON_SECRET_SALT_2026";
+            const seedCreatorHash = createHash("sha256")
+                .update(`seed_user:${salt}:creator`)
+                .digest("hex");
+
             const r1 = await storage.createRumor(
                 "The library 3rd floor is haunted by a ghost that helps you pass calculus.",
             );
@@ -244,6 +259,7 @@ async function seedData() {
                 contentType: "text",
                 contentText:
                     "I fell asleep there and woke up with a completed derivative worksheet.",
+                creatorHash: seedCreatorHash,
             });
 
             await storage.createEvidence({
@@ -252,6 +268,7 @@ async function seedData() {
                 contentType: "text",
                 contentText:
                     "It's just the janitor, Bob. He has a math degree.",
+                creatorHash: seedCreatorHash,
             });
 
             const r2 = await storage.createRumor(
@@ -264,6 +281,7 @@ async function seedData() {
                 contentType: "link",
                 contentUrl: "http://university-news-leak.com/budget-2026",
                 contentText: "Budget leak shows new arena funding",
+                creatorHash: seedCreatorHash,
             });
 
             console.log("Seeding complete.");

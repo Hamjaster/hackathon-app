@@ -42,14 +42,23 @@ export default function RumorDetailPage() {
         return <div className="p-20 text-center">Rumor not found</div>;
 
     const supportingEvidence = rumor.evidence.filter(
-        (e) => (e as any).is_supporting === true,
+        (e) => (e as any).evidence_type === "support",
     );
     const disputingEvidence = rumor.evidence.filter(
-        (e) => (e as any).is_supporting === false,
+        (e) => (e as any).evidence_type === "dispute",
     );
 
-    const handleVote = (evidenceId: string, isHelpful: boolean, stakeAmount: number) => {
-        voteEvidence.mutate({ evidenceId, isHelpful, rumorId: id, stakeAmount });
+    const handleVote = (
+        evidenceId: string,
+        isHelpful: boolean,
+        stakeAmount: number,
+    ) => {
+        voteEvidence.mutate({
+            evidenceId,
+            isHelpful,
+            rumorId: id,
+            stakeAmount,
+        });
     };
 
     const chartData = rumor.history.map((entry) => ({
@@ -72,10 +81,14 @@ export default function RumorDetailPage() {
                                 </span>
                                 <span>•</span>
                                 <span>
-                                    {(rumor as any).created_at ? format(
-                                        new Date((rumor as any).created_at),
-                                        "PPP p",
-                                    ) : "Unknown date"}
+                                    {(rumor as any).created_at
+                                        ? format(
+                                              new Date(
+                                                  (rumor as any).created_at,
+                                              ),
+                                              "PPP p",
+                                          )
+                                        : "Unknown date"}
                                 </span>
                             </div>
                             <h1 className="text-2xl md:text-3xl font-bold leading-tight">
@@ -228,11 +241,15 @@ export default function RumorDetailPage() {
                                 <p>Evidence Count: {rumor.evidence.length}</p>
                                 <p>
                                     Created:{" "}
-                                    {new Date((rumor as any).created_at).toISOString()}
+                                    {new Date(
+                                        (rumor as any).created_at,
+                                    ).toISOString()}
                                 </p>
                                 <p>
                                     Last Updated:{" "}
-                                    {new Date((rumor as any).updated_at).toISOString()}
+                                    {new Date(
+                                        (rumor as any).updated_at,
+                                    ).toISOString()}
                                 </p>
                             </CardContent>
                         </Card>
