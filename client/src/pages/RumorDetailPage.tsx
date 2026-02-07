@@ -42,10 +42,10 @@ export default function RumorDetailPage() {
         return <div className="p-20 text-center">Rumor not found</div>;
 
     const supportingEvidence = rumor.evidence.filter(
-        (e) => e.isSupporting === true,
+        (e) => (e as any).is_supporting === true,
     );
     const disputingEvidence = rumor.evidence.filter(
-        (e) => e.isSupporting === false,
+        (e) => (e as any).is_supporting === false,
     );
 
     const handleVote = (evidenceId: string, isHelpful: boolean, stakeAmount: number) => {
@@ -53,8 +53,8 @@ export default function RumorDetailPage() {
     };
 
     const chartData = rumor.history.map((entry) => ({
-        time: format(new Date(entry.createdAt), "HH:mm"),
-        score: entry.newScore * 100,
+        time: format(new Date((entry as any).created_at), "HH:mm"),
+        score: (entry as any).new_score * 100,
     }));
 
     return (
@@ -72,10 +72,10 @@ export default function RumorDetailPage() {
                                 </span>
                                 <span>•</span>
                                 <span>
-                                    {format(
-                                        new Date(rumor.createdAt),
+                                    {(rumor as any).created_at ? format(
+                                        new Date((rumor as any).created_at),
                                         "PPP p",
-                                    )}
+                                    ) : "Unknown date"}
                                 </span>
                             </div>
                             <h1 className="text-2xl md:text-3xl font-bold leading-tight">
@@ -86,7 +86,7 @@ export default function RumorDetailPage() {
                         <Card className="bg-card/40 border-border/60">
                             <CardContent className="pt-6">
                                 <TrustScore
-                                    score={rumor.trustScore}
+                                    score={(rumor as any).trust_score}
                                     size="lg"
                                     className="mb-4"
                                 />
@@ -228,11 +228,11 @@ export default function RumorDetailPage() {
                                 <p>Evidence Count: {rumor.evidence.length}</p>
                                 <p>
                                     Created:{" "}
-                                    {new Date(rumor.createdAt).toISOString()}
+                                    {new Date((rumor as any).created_at).toISOString()}
                                 </p>
                                 <p>
                                     Last Updated:{" "}
-                                    {new Date(rumor.updatedAt).toISOString()}
+                                    {new Date((rumor as any).updated_at).toISOString()}
                                 </p>
                             </CardContent>
                         </Card>

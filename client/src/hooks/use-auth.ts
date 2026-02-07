@@ -34,6 +34,8 @@ async function fetchUser(): Promise<User | null> {
 }
 
 async function logout(): Promise<void> {
+  // Clear localStorage to force login modal on next visit
+  localStorage.removeItem('userId');
   window.location.href = "/api/logout";
 }
 
