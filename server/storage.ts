@@ -61,8 +61,8 @@ export interface IStorage {
     resolveRumor(
         rumorId: string,
         finalStatus: "Verified" | "Debunked" | "Inconclusive",
-    ): Promise<void>;
-    checkAndResolveRumors(): Promise<{ resolved: number; rumors: string[] }>;
+    ): Promise<number>;
+    checkAndResolveRumors(): Promise<{ resolved: number; rumors: Array<{ rumorId: string; newStatus: string; votersUpdated: number }> }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -742,7 +742,7 @@ export class DatabaseStorage implements IStorage {
     async resolveRumor(
         rumorId: string,
         finalStatus: "Verified" | "Debunked" | "Inconclusive",
-    ): Promise<void> {
+    ): Promise<number> {
         console.log(
             `[Resolution] Resolving rumor ${rumorId} as ${finalStatus}`,
         );
@@ -765,7 +765,9 @@ export class DatabaseStorage implements IStorage {
             .eq("rumor_id", rumorId)
             .is("was_correct", null); // Only unresolved votes
 
-        if (!voteOutcomes || voteOutcomes.length === 0) return;
+        if (!voteOutcomes || voteOutcomes.length === 0) return 0;
+
+        let votersUpdated = 0;
 
         // 3. Determine correctness for each vote
         for (const outcome of voteOutcomes) {
@@ -779,7 +781,7 @@ export class DatabaseStorage implements IStorage {
             if (!evidence) continue;
 
             // Determine if vote was correct
-            let wasCorrect = false;
+            let wasCorrect: boolean | null = false;
 
             if (finalStatus === "Verified") {
                 // Supporting evidence votes were correct
@@ -861,6 +863,7 @@ export class DatabaseStorage implements IStorage {
                 console.log(
                     `[Resolution] Updated user ${outcome.vote_hash.substring(0, 8)}... - Reputation: ${newReputation.toFixed(3)}, Points: ${newTotalPoints}`,
                 );
+                votersUpdated++;
             }
         }
 
@@ -873,11 +876,21 @@ export class DatabaseStorage implements IStorage {
                 votes_resolved: voteOutcomes.length,
             },
         });
+
+        console.log(
+            `[Resolution] Resolved rumor ${rumorId} - Updated ${votersUpdated} voters`,
+        );
+
+        return votersUpdated;
     }
 
     async checkAndResolveRumors(): Promise<{
         resolved: number;
-        rumors: string[];
+        rumors: Array<{
+            rumorId: string;
+            newStatus: string;
+            votersUpdated: number;
+        }>;
     }> {
         const now = new Date();
         const fortyEightHoursAgo = new Date(
@@ -885,7 +898,11 @@ export class DatabaseStorage implements IStorage {
         );
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-        const resolvedRumors: string[] = [];
+        const resolvedRumors: Array<{
+            rumorId: string;
+            newStatus: string;
+            votersUpdated: number;
+        }> = [];
 
         // Get all active rumors
         const { data: activeRumors } = await supabase
@@ -930,8 +947,15 @@ export class DatabaseStorage implements IStorage {
             }
 
             if (shouldResolve && finalStatus) {
-                await this.resolveRumor(rumor.id, finalStatus);
-                resolvedRumors.push(rumor.id);
+                const votersUpdated = await this.resolveRumor(
+                    rumor.id,
+                    finalStatus,
+                );
+                resolvedRumors.push({
+                    rumorId: rumor.id,
+                    newStatus: finalStatus,
+                    votersUpdated,
+                });
             }
         }
 

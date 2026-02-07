@@ -129,16 +129,18 @@ export function useVoteEvidence() {
             evidenceId,
             isHelpful,
             rumorId,
+            stakeAmount = 1,
         }: {
             evidenceId: string;
             isHelpful: boolean;
             rumorId: string;
+            stakeAmount?: number;
         }) => {
             const url = buildUrl(api.evidence.vote.path, { id: evidenceId });
             const res = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ isHelpful }),
+                body: JSON.stringify({ isHelpful, stakeAmount }),
                 credentials: "include",
             });
 

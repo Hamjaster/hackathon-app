@@ -6,6 +6,7 @@ import { z } from "zod";
 import { rateLimit } from "./middleware/rateLimit";
 import session from "express-session";
 import { randomUUID } from "crypto";
+import { demoRouter } from "./demo-resolution";
 
 // Mock auth middleware for local development
 function setupMockAuth(app: Express) {
@@ -49,6 +50,10 @@ export async function registerRoutes(
     // Apply rate limiting to all API routes
     app.use("/api", rateLimit);
 
+    // Demo/Testing endpoints for time-based resolution
+    // ⚠️ Remove in production!
+    app.use("/api/demo", demoRouter);
+
     // Rumor Routes
     app.get(api.rumors.list.path, async (req, res) => {
         const rumors = await storage.getRumors();
@@ -72,7 +77,7 @@ export async function registerRoutes(
     });
 
     app.get(api.rumors.get.path, async (req, res) => {
-        const rumor = await storage.getRumor(req.params.id);
+        const rumor = await storage.getRumor(req.params.id as string);
         if (!rumor) return res.status(404).json({ message: "Rumor not found" });
         res.json(rumor);
     });
@@ -85,10 +90,10 @@ export async function registerRoutes(
         try {
             const input = api.evidence.create.input.parse(req.body);
             const evidence = await storage.createEvidence({
-                rumorId: req.params.id,
+                rumorId: req.params.id as string,
                 evidenceType: input.isSupporting ? "support" : "dispute",
                 contentType: input.url ? "link" : "text",
-                contentUrl: input.url,
+                contentUrl: input.url ?? undefined,
                 contentText: input.content,
             });
             res.status(201).json(evidence);
@@ -109,7 +114,7 @@ export async function registerRoutes(
             const userId = req.user!.id; // Mock user ID from session
 
             const result = await storage.createVote({
-                evidenceId: req.params.id,
+                evidenceId: req.params.id as string,
                 userId,
                 isHelpful,
                 stakeAmount,

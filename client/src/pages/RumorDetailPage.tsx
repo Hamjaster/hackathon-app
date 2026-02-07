@@ -3,6 +3,8 @@ import { useRumor, useVoteEvidence } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { TrustScore } from "@/components/TrustScore";
 import { AddEvidenceDialog } from "@/components/AddEvidenceDialog";
+import { UserStatsCard } from "@/components/UserStatsCard";
+import { VoteWithStakeDialog } from "@/components/VoteWithStakeDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +48,8 @@ export default function RumorDetailPage() {
         (e) => e.evidence_type === "dispute",
     );
 
-    const handleVote = (evidenceId: string, isHelpful: boolean) => {
-        voteEvidence.mutate({ evidenceId, isHelpful, rumorId: id });
+    const handleVote = (evidenceId: string, isHelpful: boolean, stakeAmount: number) => {
+        voteEvidence.mutate({ evidenceId, isHelpful, rumorId: id, stakeAmount });
     };
 
     const chartData = rumor.history.map((entry) => ({
@@ -97,8 +99,10 @@ export default function RumorDetailPage() {
                         </Card>
                     </div>
 
-                    <div className="lg:col-span-1">
-                        <Card className="h-full border-border/60 bg-card/40">
+                    <div className="lg:col-span-1 space-y-4">
+                        <UserStatsCard />
+
+                        <Card className="border-border/60 bg-card/40">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm font-mono flex items-center gap-2">
                                     <History className="h-4 w-4" />
@@ -275,26 +279,20 @@ function EvidenceCard({
                     </span>
 
                     <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs hover:text-[hsl(var(--status-verified))] hover:bg-[hsl(var(--status-verified))]/10"
-                            onClick={() => onVote(item.id, true)}
-                            disabled={isVoting}
-                        >
-                            <ThumbsUp className="h-3 w-3 mr-1.5" />
-                            Helpful ({item.helpful_votes})
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-xs hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => onVote(item.id, false)}
-                            disabled={isVoting}
-                        >
-                            <ThumbsDown className="h-3 w-3 mr-1.5" />
-                            Misleading ({item.misleading_votes})
-                        </Button>
+                        <VoteWithStakeDialog
+                            evidenceId={item.id}
+                            isHelpful={true}
+                            onVote={onVote}
+                            isVoting={isVoting}
+                            currentVotes={item.helpful_votes}
+                        />
+                        <VoteWithStakeDialog
+                            evidenceId={item.id}
+                            isHelpful={false}
+                            onVote={onVote}
+                            isVoting={isVoting}
+                            currentVotes={item.misleading_votes}
+                        />
                     </div>
                 </div>
             </CardContent>
