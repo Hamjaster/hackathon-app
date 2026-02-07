@@ -3,6 +3,7 @@ import { useRumors } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { CreateRumorDialog } from "@/components/CreateRumorDialog";
 import { TrustScore } from "@/components/TrustScore";
+import { CountdownTimer } from "@/components/CountdownTimer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Card,
@@ -19,7 +20,7 @@ import { MessageSquare, ArrowRight, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function FeedPage() {
-    const { data: rumors, isLoading, error } = useRumors();
+    const { data: rumors, isLoading, error, refetch } = useRumors();
     const [filter, setFilter] = useState("all");
 
     if (isLoading) return <FeedSkeleton />;
@@ -113,18 +114,66 @@ export default function FeedPage() {
                                             <div className="flex justify-between items-start gap-4">
                                                 <div className="flex flex-col gap-2 w-full">
                                                     <div className="flex justify-between items-center w-full">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className="font-mono text-[10px] uppercase tracking-wider bg-background/50"
-                                                        >
-                                                            #
-                                                            {rumor.id
-                                                                .toString()
-                                                                .padStart(
-                                                                    4,
-                                                                    "0",
-                                                                )}
-                                                        </Badge>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge
+                                                                variant="outline"
+                                                                className="font-mono text-[10px] uppercase tracking-wider bg-background/50"
+                                                            >
+                                                                #
+                                                                {rumor.id
+                                                                    .toString()
+                                                                    .padStart(
+                                                                        4,
+                                                                        "0",
+                                                                    )}
+                                                            </Badge>
+                                                            {((rumor as any)
+                                                                .score_above_75_since ||
+                                                                (rumor as any)
+                                                                    .score_below_25_since) && (
+                                                                <CountdownTimer
+                                                                    targetDate={
+                                                                        (
+                                                                            rumor as any
+                                                                        )
+                                                                            .score_above_75_since ||
+                                                                        (
+                                                                            rumor as any
+                                                                        )
+                                                                            .score_below_25_since
+                                                                    }
+                                                                    type="resolution"
+                                                                    status={
+                                                                        (
+                                                                            rumor as any
+                                                                        ).status
+                                                                    }
+                                                                    onExpire={() =>
+                                                                        refetch()
+                                                                    }
+                                                                />
+                                                            )}
+                                                            {(rumor as any)
+                                                                .expiry_date && (
+                                                                <CountdownTimer
+                                                                    targetDate={
+                                                                        (
+                                                                            rumor as any
+                                                                        )
+                                                                            .expiry_date
+                                                                    }
+                                                                    type="expiry"
+                                                                    status={
+                                                                        (
+                                                                            rumor as any
+                                                                        ).status
+                                                                    }
+                                                                    onExpire={() =>
+                                                                        refetch()
+                                                                    }
+                                                                />
+                                                            )}
+                                                        </div>
                                                         <span className="text-xs text-muted-foreground font-mono">
                                                             {formatDistanceToNow(
                                                                 new Date(
@@ -159,7 +208,9 @@ export default function FeedPage() {
                                         {(rumor as any).image_url && (
                                             <div className="px-6 pl-6 pb-1">
                                                 <img
-                                                    src={(rumor as any).image_url}
+                                                    src={
+                                                        (rumor as any).image_url
+                                                    }
                                                     alt=""
                                                     className="w-full h-40 object-cover rounded-lg border border-border/30"
                                                 />
