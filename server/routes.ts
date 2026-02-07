@@ -91,7 +91,16 @@ export async function registerRoutes(
         // Store in session
         req.session.userId = trimmedId;
 
-        res.json({ success: true, userId: trimmedId });
+        // Save session before responding
+        req.session.save((err) => {
+            if (err) {
+                console.error("Session save error:", err);
+                return res
+                    .status(500)
+                    .json({ error: "Failed to save session" });
+            }
+            res.json({ success: true, userId: trimmedId });
+        });
     });
 
     app.get("/api/auth/status", (req, res) => {
@@ -169,14 +178,29 @@ export async function registerRoutes(
     });
 
     app.post(api.evidence.vote.path, async (req, res) => {
-        if (!req.isAuthenticated())
+        console.log(
+            "[VOTE] Evidence vote endpoint hit:",
+            req.params.id,
+            req.body,
+        );
+
+        if (!req.isAuthenticated()) {
+            console.log("[VOTE] Not authenticated");
             return res.status(401).json({ message: "Unauthorized" });
+        }
 
         try {
             const { isHelpful, stakeAmount } = api.evidence.vote.input.parse(
                 req.body,
             );
             const userId = req.user!.id; // Mock user ID from session
+
+            console.log("[VOTE] Processing vote:", {
+                evidenceId: req.params.id,
+                userId,
+                isHelpful,
+                stakeAmount,
+            });
 
             const result = await storage.createVote({
                 evidenceId: req.params.id as string,
@@ -186,13 +210,16 @@ export async function registerRoutes(
             });
 
             if (!result.success) {
+                console.log("[VOTE] Vote failed:", result.error);
                 return res
                     .status(400)
                     .json({ message: result.error || "Vote failed" });
             }
 
+            console.log("[VOTE] Vote successful");
             res.json(result);
         } catch (err) {
+            console.error("[VOTE] Error:", err);
             if (err instanceof z.ZodError) {
                 return res.status(400).json({ message: err.errors[0].message });
             }
