@@ -99,9 +99,11 @@ export default function FeedPage() {
                                         {/* Status accent line on left */}
                                         <div
                                             className={`absolute left-0 top-0 bottom-0 w-1 ${
-                                                rumor.trust_score >= 0.8
+                                                (rumor as any).trust_score >=
+                                                0.8
                                                     ? "bg-[hsl(var(--status-verified))]"
-                                                    : rumor.trust_score <= 0.2
+                                                    : (rumor as any)
+                                                            .trust_score <= 0.2
                                                       ? "bg-destructive"
                                                       : "bg-yellow-500"
                                             }`}
@@ -126,7 +128,10 @@ export default function FeedPage() {
                                                         <span className="text-xs text-muted-foreground font-mono">
                                                             {formatDistanceToNow(
                                                                 new Date(
-                                                                    rumor.created_at,
+                                                                    (
+                                                                        rumor as any
+                                                                    )
+                                                                        .created_at,
                                                                 ),
                                                                 {
                                                                     addSuffix: true,
@@ -135,12 +140,16 @@ export default function FeedPage() {
                                                         </span>
                                                     </div>
                                                     <CardTitle className="text-lg font-medium leading-relaxed line-clamp-2 group-hover:text-primary transition-colors">
-                                                        {rumor.summary ?? rumor.content}
+                                                        {(rumor as any)
+                                                            .summary ??
+                                                            rumor.content}
                                                     </CardTitle>
-                                                    {(rumor as { content_warning?: boolean }).content_warning && (
+                                                    {(rumor as any)
+                                                        .content_warning && (
                                                         <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-500 text-xs font-medium">
                                                             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                                                            Sensitive content — view with care
+                                                            Sensitive content —
+                                                            view with care
                                                         </div>
                                                     )}
                                                 </div>
@@ -149,7 +158,9 @@ export default function FeedPage() {
 
                                         <CardContent className="pb-4 pl-6">
                                             <TrustScore
-                                                score={rumor.trust_score}
+                                                score={
+                                                    (rumor as any).trust_score
+                                                }
                                             />
                                         </CardContent>
 
@@ -157,7 +168,10 @@ export default function FeedPage() {
                                             <div className="flex gap-4">
                                                 <span className="flex items-center gap-1.5 hover:text-foreground transition-colors">
                                                     <MessageSquare className="h-3.5 w-3.5" />
-                                                    {rumor.evidence_count}{" "}
+                                                    {
+                                                        (rumor as any)
+                                                            .evidence_count
+                                                    }{" "}
                                                     evidence items
                                                 </span>
                                             </div>
