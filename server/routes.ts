@@ -151,12 +151,6 @@ export async function registerRoutes(
             if (imageUrl) contentType = "image";
             else if (input.url) contentType = "link";
 
-            // Generate creator hash so users can't vote on their own evidence
-            const salt = process.env.VOTE_SALT || "HACKATHON_SECRET_SALT_2026";
-            const creatorHash = createHash("sha256")
-                .update(`${req.user!.id}:${salt}:creator`)
-                .digest("hex");
-
             const evidence = await storage.createEvidence({
                 rumorId: req.params.id as string,
                 evidenceType: input.isSupporting ? "support" : "dispute",
