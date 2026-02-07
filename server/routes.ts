@@ -8,21 +8,24 @@ import session from "express-session";
 import { randomUUID } from "crypto";
 import { demoRouter } from "./demo-resolution";
 
-// Mock auth middleware for local development
+// User ID authentication for local development
 function setupMockAuth(app: Express) {
     app.use(session({
         secret: process.env.SESSION_SECRET || 'hackathon-dev-secret-2026',
         resave: false,
-        saveUninitialized: true,
-        cookie: { secure: false }
+        saveUninitialized: false, // Don't auto-create sessions
+        cookie: { secure: false, maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
     }));
 
     app.use((req: any, res, next) => {
-        if (!req.session.userId) {
-            req.session.userId = randomUUID();
+        // Only set user if userId exists in session
+        if (req.session.userId) {
+            req.user = { id: req.session.userId };
+            req.isAuthenticated = () => true;
+        } else {
+            req.user = null;
+            req.isAuthenticated = () => false;
         }
-        req.user = { id: req.session.userId };
-        req.isAuthenticated = () => true; // Always authenticated for local dev
         next();
     });
 }
@@ -33,6 +36,12 @@ declare global {
             isAuthenticated(): boolean;
             user?: { id: string };
         }
+    }
+}
+
+declare module 'express-session' {
+    interface SessionData {
+        userId?: string;
     }
 }
 
@@ -53,6 +62,43 @@ export async function registerRoutes(
     // Demo/Testing endpoints for time-based resolution
     // ⚠️ Remove in production!
     app.use("/api/demo", demoRouter);
+
+    // Authentication endpoints
+    app.post("/api/auth/set-user-id", (req, res) => {
+        const { userId } = req.body;
+
+        // Validation
+        if (!userId || typeof userId !== "string") {
+            return res.status(400).json({ error: "User ID is required" });
+        }
+
+        const trimmedId = userId.trim();
+
+        if (trimmedId.length < 3) {
+            return res
+                .status(400)
+                .json({ error: "User ID must be at least 3 characters" });
+        }
+
+        if (trimmedId.length > 50) {
+            return res
+                .status(400)
+                .json({ error: "User ID must be less than 50 characters" });
+        }
+
+        // Store in session
+        req.session.userId = trimmedId;
+
+        res.json({ success: true, userId: trimmedId });
+    });
+
+    app.get("/api/auth/status", (req, res) => {
+        if (req.isAuthenticated()) {
+            res.json({ authenticated: true, userId: req.user!.id });
+        } else {
+            res.json({ authenticated: false });
+        }
+    });
 
     // Rumor Routes
     app.get(api.rumors.list.path, async (req, res) => {
