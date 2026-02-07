@@ -33,11 +33,22 @@ function Router() {
         const data = await res.json();
 
         if (data.authenticated) {
-          // Session exists, we're good
+          // Session exists, sync localStorage if needed
+          if (data.userId && !userId) {
+            localStorage.setItem("userId", data.userId);
+            setUserId(data.userId);
+          }
           setIsSettingUp(false);
         } else if (userId) {
           // Have userId in localStorage but no session, restore it
-          await handleUserIdSubmit(userId);
+          try {
+            await handleUserIdSubmit(userId);
+          } catch (error) {
+            // If restore fails, show modal
+            console.error("Failed to restore session:", error);
+            setShowModal(true);
+            setIsSettingUp(false);
+          }
         } else {
           // No session and no userId, show modal
           setShowModal(true);
@@ -51,7 +62,7 @@ function Router() {
     };
 
     checkAuthStatus();
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   const handleUserIdSubmit = async (id: string) => {
     try {
@@ -74,8 +85,8 @@ function Router() {
       setIsSettingUp(false);
 
       toast({
-        title: "Welcome!",
-        description: `Logged in as ${id}`,
+        title: "Authentication Successful",
+        description: "You can now submit rumors and vote on evidence.",
       });
     } catch (error) {
       throw error; // Let modal handle the error display
