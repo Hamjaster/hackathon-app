@@ -62,15 +62,32 @@ export const api = {
       path: '/api/evidence/:id/vote',
       input: z.object({
         isHelpful: z.boolean(),
+        stakeAmount: z.number().int().min(1).max(10).optional().default(1),
       }),
       responses: {
-        200: z.object({ 
-          success: z.boolean(), 
+        200: z.object({
+          success: z.boolean(),
           newTrustScore: z.number().optional(),
           newStatus: z.string().optional()
         }),
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  user: {
+    stats: {
+      method: 'GET' as const,
+      path: '/api/user/stats',
+      responses: {
+        200: z.object({
+          reputation: z.number(),
+          totalPoints: z.number(),
+          pointsStaked: z.number(),
+          correctVotes: z.number(),
+          totalVotes: z.number(),
+        }),
         404: errorSchemas.notFound,
       },
     },

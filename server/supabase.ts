@@ -37,6 +37,11 @@ export interface Database {
           has_harmful_content: boolean | null;
           ai_confidence: 'high' | 'medium' | 'low' | null;
           ai_processed_at: string | null;
+          // Time-based resolution fields
+          score_above_75_since: string | null;
+          score_below_25_since: string | null;
+          resolution_pending: boolean;
+          resolved_at: string | null;
         };
         Insert: {
           id?: string;
@@ -102,6 +107,8 @@ export interface Database {
           vote_hash: string;
           vote_type: 'helpful' | 'misleading';
           vote_weight: number;
+          stake_amount: number;
+          voter_reputation: number | null;
           created_at: string;
         };
         Insert: {
@@ -110,6 +117,8 @@ export interface Database {
           vote_hash: string;
           vote_type: 'helpful' | 'misleading';
           vote_weight?: number;
+          stake_amount?: number;
+          voter_reputation?: number | null;
           created_at?: string;
         };
       };
@@ -167,6 +176,98 @@ export interface Database {
           updated_at?: string;
         };
       };
+      users: {
+        Row: {
+          id: string;
+          vote_hash: string;
+          reputation: number;
+          correct_votes: number;
+          total_votes: number;
+          total_points: number;
+          points_staked: number;
+          bot_flag_score: number;
+          is_suspicious: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          vote_hash: string;
+          reputation?: number;
+          correct_votes?: number;
+          total_votes?: number;
+          total_points?: number;
+          points_staked?: number;
+          bot_flag_score?: number;
+          is_suspicious?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          reputation?: number;
+          correct_votes?: number;
+          total_votes?: number;
+          total_points?: number;
+          points_staked?: number;
+          bot_flag_score?: number;
+          is_suspicious?: boolean;
+          updated_at?: string;
+        };
+      };
+      vote_outcomes: {
+        Row: {
+          id: string;
+          vote_hash: string;
+          rumor_id: string;
+          evidence_id: string;
+          vote_type: string;
+          stake_amount: number;
+          was_correct: boolean | null;
+          points_gained: number;
+          points_lost: number;
+          created_at: string;
+          resolved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          vote_hash: string;
+          rumor_id: string;
+          evidence_id: string;
+          vote_type: string;
+          stake_amount: number;
+          was_correct?: boolean | null;
+          points_gained?: number;
+          points_lost?: number;
+          created_at?: string;
+          resolved_at?: string | null;
+        };
+      };
+      vote_agreements: {
+        Row: {
+          id: string;
+          vote_hash_1: string;
+          vote_hash_2: string;
+          total_shared_votes: number;
+          agreement_count: number;
+          agreement_rate: number;
+          last_updated: string;
+        };
+        Insert: {
+          id?: string;
+          vote_hash_1: string;
+          vote_hash_2: string;
+          total_shared_votes?: number;
+          agreement_count?: number;
+          agreement_rate?: number;
+          last_updated?: string;
+        };
+        Update: {
+          total_shared_votes?: number;
+          agreement_count?: number;
+          agreement_rate?: number;
+          last_updated?: string;
+        };
+      };
     };
   };
 }
@@ -176,3 +277,6 @@ export type Evidence = Database['public']['Tables']['evidence']['Row'];
 export type EvidenceVote = Database['public']['Tables']['evidence_votes']['Row'];
 export type AuditLog = Database['public']['Tables']['audit_log']['Row'];
 export type UserFingerprint = Database['public']['Tables']['user_fingerprints']['Row'];
+export type User = Database['public']['Tables']['users']['Row'];
+export type VoteOutcome = Database['public']['Tables']['vote_outcomes']['Row'];
+export type VoteAgreement = Database['public']['Tables']['vote_agreements']['Row'];

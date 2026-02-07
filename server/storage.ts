@@ -1,401 +1,942 @@
 import { supabase, type Rumor, type Evidence, type AuditLog } from "./supabase";
-import { createHash } from 'crypto';
+import { createHash } from "crypto";
 
-type RumorStatus = 'Active' | 'Verified' | 'Debunked' | 'Inconclusive';
+type RumorStatus = "Active" | "Verified" | "Debunked" | "Inconclusive";
 
 export interface RumorWithCount extends Rumor {
-  evidence_count: number;
+    evidence_count: number;
 }
 
 export interface EvidenceWithVotes extends Evidence {
-  helpful_votes: number;
-  misleading_votes: number;
+    helpful_votes: number;
+    misleading_votes: number;
 }
 
 export interface RumorDetail extends Rumor {
-  evidence: EvidenceWithVotes[];
-  history: AuditLog[];
+    evidence: EvidenceWithVotes[];
+    history: AuditLog[];
 }
 
 export interface IStorage {
-  // Rumors
-  getRumors(): Promise<RumorWithCount[]>;
-  getRumor(id: string): Promise<RumorDetail | null>;
-  createRumor(content: string): Promise<Rumor>;
+    // Rumors
+    getRumors(): Promise<RumorWithCount[]>;
+    getRumor(id: string): Promise<RumorDetail | null>;
+    createRumor(content: string): Promise<Rumor>;
 
-  // Evidence
-  createEvidence(data: { rumorId: string; evidenceType: 'support' | 'dispute'; contentType: 'link' | 'image' | 'text'; contentUrl?: string; contentText?: string }): Promise<Evidence>;
+    // Evidence
+    createEvidence(data: {
+        rumorId: string;
+        evidenceType: "support" | "dispute";
+        contentType: "link" | "image" | "text";
+        contentUrl?: string;
+        contentText?: string;
+    }): Promise<Evidence>;
 
-  // Votes & Scoring
-  createVote(data: { evidenceId: string; userId: string; isHelpful: boolean }): Promise<{ success: boolean; newTrustScore?: number; newStatus?: string; error?: string }>;
+    // Votes & Scoring
+    createVote(data: {
+        evidenceId: string;
+        userId: string;
+        isHelpful: boolean;
+        stakeAmount?: number;
+    }): Promise<{
+        success: boolean;
+        newTrustScore?: number;
+        newStatus?: string;
+        error?: string;
+    }>;
+
+    // User Management
+    getOrCreateUser(voteHash: string): Promise<import("./supabase").User>;
+    getUserStats(
+        voteHash: string,
+    ): Promise<{
+        reputation: number;
+        totalPoints: number;
+        pointsStaked: number;
+        correctVotes: number;
+        totalVotes: number;
+    } | null>;
+
+    // Resolution
+    resolveRumor(
+        rumorId: string,
+        finalStatus: "Verified" | "Debunked" | "Inconclusive",
+    ): Promise<void>;
+    checkAndResolveRumors(): Promise<{ resolved: number; rumors: string[] }>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getRumors(): Promise<RumorWithCount[]> {
-    // Get all rumors
-    const { data: rumors, error } = await supabase
-      .from('rumors')
-      .select('*')
-      .order('created_at', { ascending: false });
+    async getRumors(): Promise<RumorWithCount[]> {
+        // Get all rumors
+        const { data: rumors, error } = await supabase
+            .from("rumors")
+            .select("*")
+            .order("created_at", { ascending: false });
 
-    if (error) throw error;
-    if (!rumors) return [];
+        if (error) throw error;
+        if (!rumors) return [];
 
-    // Get evidence counts for each rumor
-    const rumorsWithCounts = await Promise.all(
-      rumors.map(async (rumor) => {
-        const { count } = await supabase
-          .from('evidence')
-          .select('*', { count: 'exact', head: true })
-          .eq('rumor_id', rumor.id);
+        // Get evidence counts for each rumor
+        const rumorsWithCounts = await Promise.all(
+            rumors.map(async (rumor) => {
+                const { count } = await supabase
+                    .from("evidence")
+                    .select("*", { count: "exact", head: true })
+                    .eq("rumor_id", rumor.id);
+
+                return {
+                    ...rumor,
+                    evidence_count: count || 0,
+                    // Map new AI fields to old field names for backward compatibility
+                    summary: rumor.ai_summary || rumor.summary || null,
+                    content_warning:
+                        rumor.has_harmful_content ||
+                        rumor.content_warning ||
+                        false,
+                };
+            }),
+        );
+
+        return rumorsWithCounts;
+    }
+
+    async getRumor(id: string): Promise<RumorDetail | null> {
+        // Get rumor
+        const { data: rumor, error: rumorError } = await supabase
+            .from("rumors")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (rumorError || !rumor) return null;
+
+        // Debug: Log what fields Supabase returns
+        console.log("[getRumor] Fields from Supabase:", Object.keys(rumor));
+        console.log("[getRumor] ai_summary:", rumor.ai_summary);
+        console.log("[getRumor] summary:", rumor.summary);
+        console.log(
+            "[getRumor] has_harmful_content:",
+            rumor.has_harmful_content,
+        );
+        console.log("[getRumor] content_warning:", rumor.content_warning);
+
+        // Get evidence with vote counts
+        const { data: evidenceList, error: evidenceError } = await supabase
+            .from("evidence")
+            .select("*")
+            .eq("rumor_id", id);
+
+        if (evidenceError) throw evidenceError;
+
+        const evidenceWithVotes: EvidenceWithVotes[] = await Promise.all(
+            (evidenceList || []).map(async (ev) => {
+                const { count: helpful } = await supabase
+                    .from("evidence_votes")
+                    .select("*", { count: "exact", head: true })
+                    .eq("evidence_id", ev.id)
+                    .eq("vote_type", "helpful");
+
+                const { count: misleading } = await supabase
+                    .from("evidence_votes")
+                    .select("*", { count: "exact", head: true })
+                    .eq("evidence_id", ev.id)
+                    .eq("vote_type", "misleading");
+
+                return {
+                    ...ev,
+                    helpful_votes: helpful || 0,
+                    misleading_votes: misleading || 0,
+                };
+            }),
+        );
+
+        // Get audit history
+        const { data: history, error: historyError } = await supabase
+            .from("audit_log")
+            .select("*")
+            .eq("rumor_id", id)
+            .order("created_at", { ascending: false });
+
+        if (historyError) throw historyError;
 
         return {
-          ...rumor,
-          evidence_count: count || 0
+            ...rumor,
+            evidence: evidenceWithVotes,
+            history: history || [],
+            // Map new AI fields to old field names for backward compatibility
+            summary: rumor.ai_summary || rumor.summary || null,
+            content_warning:
+                rumor.has_harmful_content || rumor.content_warning || false,
         };
-      })
-    );
+    }
 
-    return rumorsWithCounts;
-  }
+    async createRumor(content: string): Promise<Rumor> {
+        const { data, error } = await supabase
+            .from("rumors")
+            .insert({ content })
+            .select()
+            .single();
 
-  async getRumor(id: string): Promise<RumorDetail | null> {
-    // Get rumor
-    const { data: rumor, error: rumorError } = await supabase
-      .from('rumors')
-      .select('*')
-      .eq('id', id)
-      .single();
+        if (error) throw error;
 
-    if (rumorError || !rumor) return null;
+        // 🚀 Trigger Inngest workflow for AI background processing (non-blocking)
+        // This replaces the old synchronous AI processing with async workflow
+        try {
+            const { inngest } = await import("./inngest/client");
+            await inngest.send({
+                name: "rumor/created",
+                data: {
+                    rumorId: data.id,
+                    content: data.content,
+                    createdAt: data.created_at,
+                },
+            });
+            console.log(
+                `[Storage] ✅ Inngest event triggered for rumor ${data.id}`,
+            );
+        } catch (inngestError) {
+            // Don't fail rumor creation if Inngest fails
+            console.error(
+                "[Storage] ⚠️ Failed to trigger Inngest event:",
+                inngestError,
+            );
 
-    // Get evidence with vote counts
-    const { data: evidenceList, error: evidenceError } = await supabase
-      .from('evidence')
-      .select('*')
-      .eq('rumor_id', id);
+            // Fallback: Try old synchronous method if Inngest is unavailable
+            try {
+                const { summarizeAndCheckSafety } = await import("./ai/gemini");
+                const { summary, contentWarning } =
+                    await summarizeAndCheckSafety(content);
+                if (summary !== null || contentWarning) {
+                    await supabase
+                        .from("rumors")
+                        .update({
+                            summary: summary ?? undefined,
+                            content_warning: contentWarning,
+                            ai_summary: summary ?? undefined,
+                            has_harmful_content: contentWarning,
+                        })
+                        .eq("id", data.id);
+                    return {
+                        ...data,
+                        summary: summary ?? null,
+                        content_warning: contentWarning,
+                        ai_summary: summary ?? null,
+                        has_harmful_content: contentWarning,
+                    };
+                }
+            } catch (e) {
+                console.warn(
+                    "[createRumor] Fallback AI step also failed:",
+                    e instanceof Error ? e.message : e,
+                );
+            }
+        }
 
-    if (evidenceError) throw evidenceError;
+        return data;
+    }
 
-    const evidenceWithVotes: EvidenceWithVotes[] = await Promise.all(
-      (evidenceList || []).map(async (ev) => {
-        const { count: helpful } = await supabase
-          .from('evidence_votes')
-          .select('*', { count: 'exact', head: true })
-          .eq('evidence_id', ev.id)
-          .eq('vote_type', 'helpful');
-
-        const { count: misleading } = await supabase
-          .from('evidence_votes')
-          .select('*', { count: 'exact', head: true })
-          .eq('evidence_id', ev.id)
-          .eq('vote_type', 'misleading');
-
-        return {
-          ...ev,
-          helpful_votes: helpful || 0,
-          misleading_votes: misleading || 0
-        };
-      })
-    );
-
-    // Get audit history
-    const { data: history, error: historyError } = await supabase
-      .from('audit_log')
-      .select('*')
-      .eq('rumor_id', id)
-      .order('created_at', { ascending: false });
-
-    if (historyError) throw historyError;
-
-    return {
-      ...rumor,
-      evidence: evidenceWithVotes,
-      history: history || []
-    };
-  }
-
-  async createRumor(content: string): Promise<Rumor> {
-    const { data, error } = await supabase
-      .from('rumors')
-      .insert({ content })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // 🚀 Trigger Inngest workflow for AI background processing (non-blocking)
-    // This replaces the old synchronous AI processing with async workflow
-    try {
-      const { inngest } = await import('./inngest/client');
-      await inngest.send({
-        name: "rumor/created",
-        data: {
-          rumorId: data.id,
-          content: data.content,
-          createdAt: data.created_at,
-        },
-      });
-      console.log(`[Storage] ✅ Inngest event triggered for rumor ${data.id}`);
-    } catch (inngestError) {
-      // Don't fail rumor creation if Inngest fails
-      console.error('[Storage] ⚠️ Failed to trigger Inngest event:', inngestError);
-
-      // Fallback: Try old synchronous method if Inngest is unavailable
-      try {
-        const { summarizeAndCheckSafety } = await import('./ai/gemini');
-        const { summary, contentWarning } = await summarizeAndCheckSafety(content);
-        if (summary !== null || contentWarning) {
-          await supabase
-            .from('rumors')
-            .update({
-              summary: summary ?? undefined,
-              content_warning: contentWarning,
+    async createEvidence(data: {
+        rumorId: string;
+        evidenceType: "support" | "dispute";
+        contentType: "link" | "image" | "text";
+        contentUrl?: string;
+        contentText?: string;
+    }): Promise<Evidence> {
+        const { data: evidence, error } = await supabase
+            .from("evidence")
+            .insert({
+                rumor_id: data.rumorId,
+                evidence_type: data.evidenceType,
+                content_type: data.contentType,
+                content_url: data.contentUrl || null,
+                content_text: data.contentText || null,
             })
-            .eq('id', data.id);
-          return { ...data, summary: summary ?? null, content_warning: contentWarning };
+            .select()
+            .single();
+
+        if (error) throw error;
+        return evidence;
+    }
+
+    async createVote(data: {
+        evidenceId: string;
+        userId: string;
+        isHelpful: boolean;
+        stakeAmount?: number;
+    }): Promise<{
+        success: boolean;
+        newTrustScore?: number;
+        newStatus?: string;
+        error?: string;
+    }> {
+        try {
+            const stake = data.stakeAmount || 1; // Default stake is 1 point
+
+            // 1. Generate anonymous vote hash
+            const salt = process.env.VOTE_SALT || "HACKATHON_SECRET_SALT_2026";
+            const voteHash = createHash("sha256")
+                .update(`${data.userId}:${salt}:${data.evidenceId}`)
+                .digest("hex");
+
+            // 2. Get or create user
+            const user = await this.getOrCreateUser(voteHash);
+
+            // 3. Check if user has enough points
+            const availablePoints = user.total_points - user.points_staked;
+            if (availablePoints < stake) {
+                return {
+                    success: false,
+                    error: `Insufficient points. You have ${availablePoints} available, but need ${stake} to stake.`,
+                };
+            }
+
+            // 4. Check for duplicate vote
+            const { data: existing, error: checkError } = await supabase
+                .from("evidence_votes")
+                .select("id")
+                .eq("vote_hash", voteHash)
+                .maybeSingle();
+
+            if (checkError && checkError.code !== "PGRST116") {
+                // PGRST116 = no rows found, which is OK
+                throw checkError;
+            }
+
+            if (existing) {
+                return {
+                    success: false,
+                    error: "You have already voted on this evidence",
+                };
+            }
+
+            // 5. Get evidence details (need rumor_id for vote_outcomes)
+            const { data: evidence } = await supabase
+                .from("evidence")
+                .select("*, rumor_id")
+                .eq("id", data.evidenceId)
+                .single();
+
+            if (!evidence) throw new Error("Evidence not found");
+
+            // 6. Calculate evidence quality (for vote weight)
+            const helpfulCount = evidence.helpful_count || 0;
+            const misleadingCount = evidence.misleading_count || 0;
+            const totalVotes = helpfulCount + misleadingCount;
+            const evidenceQuality =
+                totalVotes > 0 ? helpfulCount / totalVotes : 0.5;
+
+            // 7. Calculate vote weight: reputation × (1 + evidence_quality) × stake
+            const voteWeight = user.reputation * (1 + evidenceQuality) * stake;
+
+            // 8. Check bot behavior (timing pattern)
+            await this.checkBotBehavior(voteHash);
+
+            // 9. Insert vote with weight and reputation snapshot
+            const voteType = data.isHelpful ? "helpful" : "misleading";
+            const { error: voteError } = await supabase
+                .from("evidence_votes")
+                .insert({
+                    evidence_id: data.evidenceId,
+                    vote_hash: voteHash,
+                    vote_type: voteType,
+                    vote_weight: voteWeight,
+                    stake_amount: stake,
+                    voter_reputation: user.reputation,
+                });
+
+            if (voteError) throw voteError;
+
+            // 10. Create vote outcome record (for later resolution)
+            await supabase.from("vote_outcomes").insert({
+                vote_hash: voteHash,
+                rumor_id: evidence.rumor_id,
+                evidence_id: data.evidenceId,
+                vote_type: voteType,
+                stake_amount: stake,
+            });
+
+            // 11. Update user's staked points
+            await supabase
+                .from("users")
+                .update({
+                    points_staked: user.points_staked + stake,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq("vote_hash", voteHash);
+
+            // 12. Update evidence vote counts
+            const field = data.isHelpful ? "helpful_count" : "misleading_count";
+            const newCount = (evidence[field] || 0) + 1;
+
+            await supabase
+                .from("evidence")
+                .update({ [field]: newCount })
+                .eq("id", data.evidenceId);
+
+            // 13. Update agreement correlation (bot detection)
+            await this.updateAgreementCorrelation(
+                voteHash,
+                data.evidenceId,
+                voteType,
+            );
+
+            // 14. Recalculate rumor trust score
+            const result = await this.updateRumorScore(evidence.rumor_id);
+
+            return {
+                success: true,
+                newTrustScore: result.newScore,
+                newStatus: result.newStatus,
+            };
+        } catch (err) {
+            console.error("Vote creation error:", err);
+            return {
+                success: false,
+                error:
+                    err instanceof Error
+                        ? err.message
+                        : "Failed to create vote",
+            };
         }
-      } catch (e) {
-        console.warn('[createRumor] Fallback AI step also failed:', e instanceof Error ? e.message : e);
-      }
     }
 
-    return data;
-  }
+    private async checkBotBehavior(voteHash: string): Promise<void> {
+        // Get or create user fingerprint
+        const { data: fingerprint } = await supabase
+            .from("user_fingerprints")
+            .select("*")
+            .eq("vote_hash", voteHash)
+            .single();
 
-  async createEvidence(data: {
-    rumorId: string;
-    evidenceType: 'support' | 'dispute';
-    contentType: 'link' | 'image' | 'text';
-    contentUrl?: string;
-    contentText?: string;
-  }): Promise<Evidence> {
-    const { data: evidence, error } = await supabase
-      .from('evidence')
-      .insert({
-        rumor_id: data.rumorId,
-        evidence_type: data.evidenceType,
-        content_type: data.contentType,
-        content_url: data.contentUrl || null,
-        content_text: data.contentText || null
-      })
-      .select()
-      .single();
+        const now = Date.now();
 
-    if (error) throw error;
-    return evidence;
-  }
+        if (!fingerprint) {
+            // Create new fingerprint
+            await supabase.from("user_fingerprints").insert({
+                vote_hash: voteHash,
+                vote_count: 1,
+            });
+            return;
+        }
 
-  async createVote(data: {
-    evidenceId: string;
-    userId: string;
-    isHelpful: boolean;
-  }): Promise<{ success: boolean; newTrustScore?: number; newStatus?: string; error?: string }> {
-    try {
-      // 1. Generate anonymous vote hash
-      const salt = process.env.VOTE_SALT || 'HACKATHON_SECRET_SALT_2026';
-      const voteHash = createHash('sha256')
-        .update(`${data.userId}:${salt}:${data.evidenceId}`)
-        .digest('hex');
+        // Check timing pattern - get recent votes
+        const { data: recentVotes } = await supabase
+            .from("evidence_votes")
+            .select("created_at")
+            .eq("vote_hash", voteHash)
+            .order("created_at", { ascending: false })
+            .limit(5);
 
-      // 2. Check for duplicate vote
-      const { data: existing, error: checkError } = await supabase
-        .from('evidence_votes')
-        .select('id')
-        .eq('vote_hash', voteHash)
-        .maybeSingle();
+        if (recentVotes && recentVotes.length >= 2) {
+            const lastVoteTime = new Date(recentVotes[0].created_at).getTime();
+            const secondLastTime = new Date(
+                recentVotes[1].created_at,
+            ).getTime();
+            const timeDiff = (now - lastVoteTime) / 1000; // seconds
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows found, which is OK
-        throw checkError;
-      }
+            if (timeDiff < 2) {
+                console.warn(
+                    `⚠️ BOT FLAG: Rapid voting detected for hash ${voteHash.substring(0, 8)}...`,
+                );
 
-      if (existing) {
-        return { success: false, error: 'You have already voted on this evidence' };
-      }
+                // Add bot flag
+                const currentFlags = fingerprint.bot_flags || [];
+                await supabase
+                    .from("user_fingerprints")
+                    .update({
+                        bot_flags: [
+                            ...currentFlags,
+                            {
+                                type: "rapid_voting",
+                                timestamp: new Date().toISOString(),
+                            },
+                        ],
+                        is_suspicious: true,
+                    })
+                    .eq("vote_hash", voteHash);
+            }
+        }
 
-      // 3. Check bot behavior (timing pattern)
-      await this.checkBotBehavior(voteHash);
-
-      // 4. Insert vote
-      const voteType = data.isHelpful ? 'helpful' : 'misleading';
-      const { error: voteError } = await supabase
-        .from('evidence_votes')
-        .insert({
-          evidence_id: data.evidenceId,
-          vote_hash: voteHash,
-          vote_type: voteType
-        });
-
-      if (voteError) throw voteError;
-
-      // 5. Update evidence vote counts
-      const { data: evidence } = await supabase
-        .from('evidence')
-        .select('*, rumor_id')
-        .eq('id', data.evidenceId)
-        .single();
-
-      if (!evidence) throw new Error('Evidence not found');
-
-      // Increment the appropriate counter
-      const field = data.isHelpful ? 'helpful_count' : 'misleading_count';
-      const newCount = (evidence[field] || 0) + 1;
-
-      await supabase
-        .from('evidence')
-        .update({ [field]: newCount })
-        .eq('id', data.evidenceId);
-
-      // 6. Recalculate rumor trust score
-      const result = await this.updateRumorScore(evidence.rumor_id);
-
-      return {
-        success: true,
-        newTrustScore: result.newScore,
-        newStatus: result.newStatus
-      };
-
-    } catch (err) {
-      console.error('Vote creation error:', err);
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to create vote' };
-    }
-  }
-
-  private async checkBotBehavior(voteHash: string): Promise<void> {
-    // Get or create user fingerprint
-    const { data: fingerprint } = await supabase
-      .from('user_fingerprints')
-      .select('*')
-      .eq('vote_hash', voteHash)
-      .single();
-
-    const now = Date.now();
-
-    if (!fingerprint) {
-      // Create new fingerprint
-      await supabase
-        .from('user_fingerprints')
-        .insert({
-          vote_hash: voteHash,
-          vote_count: 1
-        });
-      return;
-    }
-
-    // Check timing pattern - get recent votes
-    const { data: recentVotes } = await supabase
-      .from('evidence_votes')
-      .select('created_at')
-      .eq('vote_hash', voteHash)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (recentVotes && recentVotes.length >= 2) {
-      const lastVoteTime = new Date(recentVotes[0].created_at).getTime();
-      const secondLastTime = new Date(recentVotes[1].created_at).getTime();
-      const timeDiff = (now - lastVoteTime) / 1000; // seconds
-
-      if (timeDiff < 2) {
-        console.warn(`⚠️ BOT FLAG: Rapid voting detected for hash ${voteHash.substring(0, 8)}...`);
-
-        // Add bot flag
-        const currentFlags = fingerprint.bot_flags || [];
+        // Update vote count
         await supabase
-          .from('user_fingerprints')
-          .update({
-            bot_flags: [...currentFlags, { type: 'rapid_voting', timestamp: new Date().toISOString() }],
-            is_suspicious: true
-          })
-          .eq('vote_hash', voteHash);
-      }
+            .from("user_fingerprints")
+            .update({ vote_count: fingerprint.vote_count + 1 })
+            .eq("vote_hash", voteHash);
     }
 
-    // Update vote count
-    await supabase
-      .from('user_fingerprints')
-      .update({ vote_count: fingerprint.vote_count + 1 })
-      .eq('vote_hash', voteHash);
-  }
+    private async updateRumorScore(
+        rumorId: string,
+    ): Promise<{ newScore: number; newStatus: RumorStatus }> {
+        // Get current rumor
+        const { data: rumor } = await supabase
+            .from("rumors")
+            .select("trust_score, score_above_75_since, score_below_25_since")
+            .eq("id", rumorId)
+            .single();
 
-  private async updateRumorScore(rumorId: string): Promise<{ newScore: number; newStatus: RumorStatus }> {
-    // Get current rumor
-    const { data: rumor } = await supabase
-      .from('rumors')
-      .select('trust_score')
-      .eq('id', rumorId)
-      .single();
+        if (!rumor) throw new Error("Rumor not found");
 
-    if (!rumor) throw new Error('Rumor not found');
+        const oldScore = rumor.trust_score;
 
-    const oldScore = rumor.trust_score;
+        // Get all evidence for this rumor
+        const { data: evidenceList } = await supabase
+            .from("evidence")
+            .select("*")
+            .eq("rumor_id", rumorId);
 
-    // Get all evidence for this rumor
-    const { data: evidenceList } = await supabase
-      .from('evidence')
-      .select('*')
-      .eq('rumor_id', rumorId);
-
-    if (!evidenceList || evidenceList.length === 0) {
-      return { newScore: 0.5, newStatus: 'Active' };
-    }
-
-    // Calculate Bayesian score with log scaling
-    let alpha = 1.0; // Prior for supporting
-    let beta = 1.0;  // Prior for disputing
-
-    for (const ev of evidenceList) {
-      const helpfulCount = ev.helpful_count || 0;
-      const misleadingCount = ev.misleading_count || 0;
-      const netVotes = helpfulCount - misleadingCount;
-
-      // Only process evidence with positive net votes (community validated)
-      // Evidence with more misleading votes is ignored (not trusted)
-      if (netVotes > 0) {
-        // Apply log scaling: weight = 1 + ln(netVotes)
-        // This caps mob influence - 100 votes is only ~2.4x more powerful than 10 votes
-        const weight = 1 + Math.log(Math.max(1, netVotes));
-
-        if (ev.evidence_type === 'support') {
-          alpha += weight;
-        } else if (ev.evidence_type === 'dispute') {
-          beta += weight;
+        if (!evidenceList || evidenceList.length === 0) {
+            return { newScore: 0.5, newStatus: "Active" };
         }
-      }
-      // Note: Evidence with netVotes <= 0 is ignored (community doesn't trust it)
+
+        // Calculate Bayesian score with log scaling
+        let alpha = 1.0; // Prior for supporting
+        let beta = 1.0; // Prior for disputing
+
+        for (const ev of evidenceList) {
+            const helpfulCount = ev.helpful_count || 0;
+            const misleadingCount = ev.misleading_count || 0;
+            const netVotes = helpfulCount - misleadingCount;
+
+            // Only process evidence with positive net votes (community validated)
+            // Evidence with more misleading votes is ignored (not trusted)
+            if (netVotes > 0) {
+                // Apply log scaling: weight = 1 + ln(netVotes)
+                // This caps mob influence - 100 votes is only ~2.4x more powerful than 10 votes
+                const weight = 1 + Math.log(Math.max(1, netVotes));
+
+                if (ev.evidence_type === "support") {
+                    alpha += weight;
+                } else if (ev.evidence_type === "dispute") {
+                    beta += weight;
+                }
+            }
+            // Note: Evidence with netVotes <= 0 is ignored (community doesn't trust it)
+        }
+
+        // Calculate new score (Beta distribution mean)
+        const newScore = alpha / (alpha + beta);
+
+        // Determine status based on thresholds (but don't auto-resolve yet)
+        let newStatus: RumorStatus = "Active";
+        if (newScore >= 0.8) newStatus = "Verified";
+        else if (newScore <= 0.2) newStatus = "Debunked";
+        else if (newScore >= 0.4 && newScore <= 0.6) newStatus = "Inconclusive";
+
+        // Track time-based thresholds for resolution
+        const now = new Date().toISOString();
+        const updates: any = {
+            trust_score: newScore,
+            status: newStatus,
+            updated_at: now
+        };
+
+        // Track when score crosses 0.75 threshold
+        if (newScore >= 0.75 && !rumor.score_above_75_since) {
+            updates.score_above_75_since = now;
+        } else if (newScore < 0.75 && rumor.score_above_75_since) {
+            updates.score_above_75_since = null; // Reset if drops below
+        }
+
+        // Track when score crosses 0.25 threshold
+        if (newScore <= 0.25 && !rumor.score_below_25_since) {
+            updates.score_below_25_since = now;
+        } else if (newScore > 0.25 && rumor.score_below_25_since) {
+            updates.score_below_25_since = null; // Reset if rises above
+        }
+
+        // Update rumor
+        await supabase
+            .from("rumors")
+            .update(updates)
+            .eq("id", rumorId);
+
+        // Log to audit trail
+        await supabase.from("audit_log").insert({
+            rumor_id: rumorId,
+            event_type: "score_update",
+            old_score: oldScore,
+            new_score: newScore,
+            metadata: { alpha, beta, threshold: newStatus },
+        });
+
+        return { newScore, newStatus };
     }
 
-    // Calculate new score (Beta distribution mean)
-    const newScore = alpha / (alpha + beta);
+    // ============================================
+    // USER MANAGEMENT & REPUTATION
+    // ============================================
 
-    // Determine status based on thresholds
-    let newStatus: RumorStatus = 'Active';
-    if (newScore >= 0.8) newStatus = 'Verified';
-    else if (newScore <= 0.2) newStatus = 'Debunked';
-    else if (newScore >= 0.4 && newScore <= 0.6) newStatus = 'Inconclusive';
+    async getOrCreateUser(
+        voteHash: string,
+    ): Promise<import("./supabase").User> {
+        // Try to get existing user
+        const { data: existing } = await supabase
+            .from("users")
+            .select("*")
+            .eq("vote_hash", voteHash)
+            .maybeSingle();
 
-    // Update rumor
-    await supabase
-      .from('rumors')
-      .update({
-        trust_score: newScore,
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', rumorId);
+        if (existing) {
+            return existing;
+        }
 
-    // Log to audit trail
-    await supabase
-      .from('audit_log')
-      .insert({
-        rumor_id: rumorId,
-        event_type: 'score_update',
-        old_score: oldScore,
-        new_score: newScore,
-        metadata: { alpha, beta, threshold: newStatus }
-      });
+        // Create new user with default values
+        const { data: newUser, error } = await supabase
+            .from("users")
+            .insert({
+                vote_hash: voteHash,
+                reputation: 0.5, // Laplace smoothing: (0 + 1) / (0 + 2) = 0.5
+                correct_votes: 0,
+                total_votes: 0,
+                total_points: 100, // Starting points
+                points_staked: 0,
+                bot_flag_score: 0.0,
+                is_suspicious: false,
+            })
+            .select()
+            .single();
 
-    return { newScore, newStatus };
-  }
+        if (error) throw error;
+        return newUser;
+    }
+
+    async getUserStats(voteHash: string): Promise<{
+        reputation: number;
+        totalPoints: number;
+        pointsStaked: number;
+        correctVotes: number;
+        totalVotes: number;
+    } | null> {
+        const { data: user } = await supabase
+            .from("users")
+            .select("*")
+            .eq("vote_hash", voteHash)
+            .maybeSingle();
+
+        if (!user) return null;
+
+        return {
+            reputation: user.reputation,
+            totalPoints: user.total_points,
+            pointsStaked: user.points_staked,
+            correctVotes: user.correct_votes,
+            totalVotes: user.total_votes,
+        };
+    }
+
+    // ============================================
+    // BOT DETECTION - AGREEMENT CORRELATION
+    // ============================================
+
+    private async updateAgreementCorrelation(
+        voteHash: string,
+        evidenceId: string,
+        voteType: string,
+    ): Promise<void> {
+        // Get all other votes on this evidence
+        const { data: otherVotes } = await supabase
+            .from("evidence_votes")
+            .select("vote_hash, vote_type")
+            .eq("evidence_id", evidenceId)
+            .neq("vote_hash", voteHash);
+
+        if (!otherVotes || otherVotes.length === 0) return;
+
+        // Update agreement with each other voter
+        for (const otherVote of otherVotes) {
+            const agreed = otherVote.vote_type === voteType;
+
+            // Ensure consistent ordering for the pair
+            const [hash1, hash2] =
+                voteHash < otherVote.vote_hash
+                    ? [voteHash, otherVote.vote_hash]
+                    : [otherVote.vote_hash, voteHash];
+
+            // Get or create agreement record
+            const { data: existing } = await supabase
+                .from("vote_agreements")
+                .select("*")
+                .eq("vote_hash_1", hash1)
+                .eq("vote_hash_2", hash2)
+                .maybeSingle();
+
+            if (existing) {
+                // Update existing agreement
+                const newTotal = existing.total_shared_votes + 1;
+                const newAgreement =
+                    existing.agreement_count + (agreed ? 1 : 0);
+                const newRate = newAgreement / newTotal;
+
+                await supabase
+                    .from("vote_agreements")
+                    .update({
+                        total_shared_votes: newTotal,
+                        agreement_count: newAgreement,
+                        agreement_rate: newRate,
+                        last_updated: new Date().toISOString(),
+                    })
+                    .eq("vote_hash_1", hash1)
+                    .eq("vote_hash_2", hash2);
+
+                // If agreement rate > 90%, flag both users
+                if (newRate > 0.9 && newTotal >= 10) {
+                    await this.flagHighAgreement(hash1, hash2, newRate);
+                }
+            } else {
+                // Create new agreement record
+                await supabase.from("vote_agreements").insert({
+                    vote_hash_1: hash1,
+                    vote_hash_2: hash2,
+                    total_shared_votes: 1,
+                    agreement_count: agreed ? 1 : 0,
+                    agreement_rate: agreed ? 1.0 : 0.0,
+                });
+            }
+        }
+    }
+
+    private async flagHighAgreement(
+        hash1: string,
+        hash2: string,
+        rate: number,
+    ): Promise<void> {
+        console.warn(
+            `⚠️ BOT FLAG: High agreement detected (${(rate * 100).toFixed(1)}%) between users`,
+        );
+
+        // Apply down-weight factor to both users
+        const downWeightFactor = 0.1; // Reduce vote weight to 10%
+
+        for (const hash of [hash1, hash2]) {
+            const { data: fingerprint } = await supabase
+                .from("user_fingerprints")
+                .select("*")
+                .eq("vote_hash", hash)
+                .maybeSingle();
+
+            if (fingerprint) {
+                const currentFlags = fingerprint.agreement_flags || [];
+                await supabase
+                    .from("user_fingerprints")
+                    .update({
+                        agreement_flags: [
+                            ...currentFlags,
+                            {
+                                type: "high_agreement",
+                                rate,
+                                timestamp: new Date().toISOString(),
+                            },
+                        ],
+                        down_weight_factor: downWeightFactor,
+                        is_suspicious: true,
+                    })
+                    .eq("vote_hash", hash);
+            }
+        }
+    }
+
+    // ============================================
+    // TIME-BASED RESOLUTION
+    // ============================================
+
+    async resolveRumor(
+        rumorId: string,
+        finalStatus: "Verified" | "Debunked" | "Inconclusive",
+    ): Promise<void> {
+        console.log(
+            `[Resolution] Resolving rumor ${rumorId} as ${finalStatus}`,
+        );
+
+        // 1. Update rumor status
+        await supabase
+            .from("rumors")
+            .update({
+                status: finalStatus,
+                resolution_pending: false,
+                resolved_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", rumorId);
+
+        // 2. Get all vote outcomes for this rumor
+        const { data: voteOutcomes } = await supabase
+            .from("vote_outcomes")
+            .select("*")
+            .eq("rumor_id", rumorId)
+            .is("was_correct", null); // Only unresolved votes
+
+        if (!voteOutcomes || voteOutcomes.length === 0) return;
+
+        // 3. Determine correctness for each vote
+        for (const outcome of voteOutcomes) {
+            // Get the evidence this vote was on
+            const { data: evidence } = await supabase
+                .from("evidence")
+                .select("evidence_type")
+                .eq("id", outcome.evidence_id)
+                .single();
+
+            if (!evidence) continue;
+
+            // Determine if vote was correct
+            let wasCorrect = false;
+
+            if (finalStatus === "Verified") {
+                // Supporting evidence votes were correct
+                wasCorrect =
+                    (evidence.evidence_type === "support" &&
+                        outcome.vote_type === "helpful") ||
+                    (evidence.evidence_type === "dispute" &&
+                        outcome.vote_type === "misleading");
+            } else if (finalStatus === "Debunked") {
+                // Disputing evidence votes were correct
+                wasCorrect =
+                    (evidence.evidence_type === "dispute" &&
+                        outcome.vote_type === "helpful") ||
+                    (evidence.evidence_type === "support" &&
+                        outcome.vote_type === "misleading");
+            } else {
+                // Inconclusive - no one wins or loses
+                wasCorrect = null;
+            }
+
+            // 4. Calculate points gained/lost
+            let pointsGained = 0;
+            let pointsLost = 0;
+
+            if (wasCorrect === true) {
+                // Correct vote: regain stake + 10% bonus
+                pointsGained =
+                    outcome.stake_amount +
+                    Math.floor(outcome.stake_amount * 0.1);
+            } else if (wasCorrect === false) {
+                // Incorrect vote: lose stake
+                pointsLost = outcome.stake_amount;
+            } else {
+                // Inconclusive: regain stake, no bonus or penalty
+                pointsGained = outcome.stake_amount;
+            }
+
+            // 5. Update vote outcome
+            await supabase
+                .from("vote_outcomes")
+                .update({
+                    was_correct: wasCorrect,
+                    points_gained: pointsGained,
+                    points_lost: pointsLost,
+                    resolved_at: new Date().toISOString(),
+                })
+                .eq("id", outcome.id);
+
+            // 6. Update user stats
+            const { data: user } = await supabase
+                .from("users")
+                .select("*")
+                .eq("vote_hash", outcome.vote_hash)
+                .single();
+
+            if (user) {
+                const newTotalVotes = user.total_votes + 1;
+                const newCorrectVotes =
+                    user.correct_votes + (wasCorrect === true ? 1 : 0);
+                const newReputation =
+                    (newCorrectVotes + 1) / (newTotalVotes + 2); // Laplace smoothing
+                const newTotalPoints =
+                    user.total_points + pointsGained - pointsLost;
+                const newPointsStaked =
+                    user.points_staked - outcome.stake_amount;
+
+                await supabase
+                    .from("users")
+                    .update({
+                        total_votes: newTotalVotes,
+                        correct_votes: newCorrectVotes,
+                        reputation: newReputation,
+                        total_points: newTotalPoints,
+                        points_staked: newPointsStaked,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq("vote_hash", outcome.vote_hash);
+
+                console.log(
+                    `[Resolution] Updated user ${outcome.vote_hash.substring(0, 8)}... - Reputation: ${newReputation.toFixed(3)}, Points: ${newTotalPoints}`,
+                );
+            }
+        }
+
+        // 7. Log resolution to audit trail
+        await supabase.from("audit_log").insert({
+            rumor_id: rumorId,
+            event_type: "resolution",
+            metadata: {
+                final_status: finalStatus,
+                votes_resolved: voteOutcomes.length,
+            },
+        });
+    }
+
+    async checkAndResolveRumors(): Promise<{
+        resolved: number;
+        rumors: string[];
+    }> {
+        const now = new Date();
+        const fortyEightHoursAgo = new Date(
+            now.getTime() - 48 * 60 * 60 * 1000,
+        );
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+        const resolvedRumors: string[] = [];
+
+        // Get all active rumors
+        const { data: activeRumors } = await supabase
+            .from("rumors")
+            .select("*")
+            .eq("status", "Active");
+
+        if (!activeRumors) return { resolved: 0, rumors: [] };
+
+        for (const rumor of activeRumors) {
+            let shouldResolve = false;
+            let finalStatus: "Verified" | "Debunked" | "Inconclusive" | null =
+                null;
+
+            // Check for Verified (score >= 0.75 for 48h)
+            if (rumor.trust_score >= 0.75 && rumor.score_above_75_since) {
+                const thresholdTime = new Date(rumor.score_above_75_since);
+                if (thresholdTime <= fortyEightHoursAgo) {
+                    shouldResolve = true;
+                    finalStatus = "Verified";
+                }
+            }
+
+            // Check for Debunked (score <= 0.25 for 48h)
+            if (rumor.trust_score <= 0.25 && rumor.score_below_25_since) {
+                const thresholdTime = new Date(rumor.score_below_25_since);
+                if (thresholdTime <= fortyEightHoursAgo) {
+                    shouldResolve = true;
+                    finalStatus = "Debunked";
+                }
+            }
+
+            // Check for Inconclusive (7 days old, score between 0.25-0.75)
+            const createdAt = new Date(rumor.created_at);
+            if (
+                createdAt <= sevenDaysAgo &&
+                rumor.trust_score > 0.25 &&
+                rumor.trust_score < 0.75
+            ) {
+                shouldResolve = true;
+                finalStatus = "Inconclusive";
+            }
+
+            if (shouldResolve && finalStatus) {
+                await this.resolveRumor(rumor.id, finalStatus);
+                resolvedRumors.push(rumor.id);
+            }
+        }
+
+        return { resolved: resolvedRumors.length, rumors: resolvedRumors };
+    }
 }
 
 export const storage = new DatabaseStorage();

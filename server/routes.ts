@@ -105,13 +105,14 @@ export async function registerRoutes(
             return res.status(401).json({ message: "Unauthorized" });
 
         try {
-            const { isHelpful } = api.evidence.vote.input.parse(req.body);
+            const { isHelpful, stakeAmount } = api.evidence.vote.input.parse(req.body);
             const userId = req.user!.id; // Mock user ID from session
 
             const result = await storage.createVote({
                 evidenceId: req.params.id,
                 userId,
                 isHelpful,
+                stakeAmount,
             });
 
             if (!result.success) {
@@ -125,6 +126,41 @@ export async function registerRoutes(
             if (err instanceof z.ZodError) {
                 return res.status(400).json({ message: err.errors[0].message });
             }
+            res.status(500).json({ message: "Internal server error" });
+        }
+    });
+
+    // User Stats Endpoint
+    app.get(api.user.stats.path, async (req, res) => {
+        if (!req.isAuthenticated())
+            return res.status(401).json({ message: "Unauthorized" });
+
+        try {
+            const userId = req.user!.id;
+            const salt = process.env.VOTE_SALT || 'HACKATHON_SECRET_SALT_2026';
+
+            // Generate vote hash for this user (consistent across all their votes)
+            const { createHash } = await import('crypto');
+            const voteHash = createHash('sha256')
+                .update(`${userId}:${salt}:user_stats`)
+                .digest('hex');
+
+            const stats = await storage.getUserStats(voteHash);
+
+            if (!stats) {
+                // User hasn't voted yet, return defaults
+                return res.json({
+                    reputation: 0.5,
+                    totalPoints: 100,
+                    pointsStaked: 0,
+                    correctVotes: 0,
+                    totalVotes: 0
+                });
+            }
+
+            res.json(stats);
+        } catch (err) {
+            console.error('User stats error:', err);
             res.status(500).json({ message: "Internal server error" });
         }
     });
