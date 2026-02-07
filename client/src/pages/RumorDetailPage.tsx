@@ -1,3 +1,4 @@
+import React from "react";
 import { useRoute } from "wouter";
 import { useRumor, useVoteEvidence } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";

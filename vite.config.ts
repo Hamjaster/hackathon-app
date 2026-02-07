@@ -9,11 +9,7 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
     plugins: [
         react({
-            jsxRuntime: "automatic",
-            jsxImportSource: "react",
-            babel: {
-                plugins: [],
-            },
+            jsxRuntime: "classic",
         }),
     ],
     resolve: {
@@ -29,19 +25,9 @@ export default defineConfig({
         emptyOutDir: true,
         sourcemap: false,
         minify: "terser",
-        rollupOptions: {
-            output: {
-                manualChunks(id) {
-                    if (id.includes("node_modules")) {
-                        if (id.includes("react") || id.includes("react-dom")) {
-                            return "react-vendor";
-                        }
-                        if (id.includes("@radix-ui")) {
-                            return "radix-vendor";
-                        }
-                    }
-                },
-            },
+        commonjsOptions: {
+            include: [/node_modules/],
+            transformMixedEsModules: true,
         },
     },
     server: {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRumors } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { CreateRumorDialog } from "@/components/CreateRumorDialog";

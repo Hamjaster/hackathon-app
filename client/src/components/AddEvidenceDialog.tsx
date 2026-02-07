@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { useCreateEvidence } from "@/hooks/use-rumors";
 import {
     Dialog,

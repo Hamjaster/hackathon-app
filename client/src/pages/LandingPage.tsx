@@ -1,3 +1,4 @@
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Terminal, Shield, Lock, Activity } from "lucide-react";
 
