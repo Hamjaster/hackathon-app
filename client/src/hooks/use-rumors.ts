@@ -156,6 +156,9 @@ export function useVoteEvidence() {
             queryClient.invalidateQueries({
                 queryKey: [api.rumors.get.path, variables.rumorId],
             });
+            queryClient.invalidateQueries({
+                queryKey: [api.user.stats.path],
+            });
             toast({
                 title: "Vote Recorded",
                 description: data.newTrustScore
