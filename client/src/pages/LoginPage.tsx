@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function LoginPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -45,7 +47,10 @@ export default function LoginPage() {
       // Store userId in localStorage
       localStorage.setItem("userId", data.userId);
 
-      // Redirect to home
+      // Invalidate auth query so Router sees the new user and doesn't redirect back to login
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+
+      // Redirect to home (Router will now have fresh auth state from useAuth())
       setLocation("/");
     } catch (err) {
       setError("Failed to login. Please try again.");

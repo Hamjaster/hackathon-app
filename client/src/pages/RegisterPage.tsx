@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function RegisterPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState<"email" | "otp" | "credentials">("email");
   const [email, setEmail] = useState("");
@@ -94,11 +96,11 @@ export default function RegisterPage() {
     });
   };
 
-  const handleContinue = () => {
-    // userId is already stored from credentials state
+  const handleContinue = async () => {
     if (credentials) {
       localStorage.setItem("userId", credentials.userId);
     }
+    await queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
     setLocation("/");
   };
 
