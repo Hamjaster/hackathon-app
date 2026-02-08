@@ -21,7 +21,7 @@ export interface IStorage {
     // Rumors
     getRumors(): Promise<RumorWithCount[]>;
     getRumor(id: string): Promise<RumorDetail | null>;
-    createRumor(content: string, imageUrl?: string | null): Promise<Rumor>;
+    createRumor(content: string, imageUrl?: string | null, posterDepartment?: string | null): Promise<Rumor>;
 
     // Evidence
     createEvidence(data: {
@@ -31,6 +31,7 @@ export interface IStorage {
         contentUrl?: string;
         contentText?: string;
         creatorHash: string;
+        creatorDepartment?: string | null;
     }): Promise<Evidence>;
 
     // Votes & Scoring
@@ -210,6 +211,7 @@ export class DatabaseStorage implements IStorage {
     async createRumor(
         content: string,
         imageUrl?: string | null,
+        posterDepartment?: string | null,
     ): Promise<Rumor> {
         console.log("[Storage] Creating rumor with AI analysis...");
 
@@ -246,9 +248,7 @@ export class DatabaseStorage implements IStorage {
         }
 
         // 💾 Save rumor with AI analysis results
-        const { data, error } = await supabase
-            .from("rumors")
-            .insert({
+        const insertData: Record<string, any> = {
                 content,
                 image_url: imageUrl || null,
                 // AI analysis fields
@@ -260,9 +260,31 @@ export class DatabaseStorage implements IStorage {
                 has_harmful_content: aiAnalysis.hasHarmfulContent,
                 ai_confidence: aiAnalysis.analysisMetadata.confidence,
                 ai_processed_at: new Date().toISOString(),
-            })
+        };
+
+        // Add poster department if available (column may not exist yet)
+        if (posterDepartment) {
+            insertData.poster_department = posterDepartment;
+        }
+
+        const { data, error } = await supabase
+            .from("rumors")
+            .insert(insertData)
             .select()
             .single();
+
+        // If poster_department column doesn't exist, retry without it
+        if (error && error.message?.includes('poster_department')) {
+            delete insertData.poster_department;
+            const retry = await supabase
+                .from("rumors")
+                .insert(insertData)
+                .select()
+                .single();
+            if (retry.error) throw retry.error;
+            console.log(`[Storage] ✅ Rumor created successfully: ${retry.data.id}`);
+            return retry.data;
+        }
 
         if (error) throw error;
 
@@ -278,19 +300,38 @@ export class DatabaseStorage implements IStorage {
         contentUrl?: string;
         contentText?: string;
         creatorHash: string;
+        creatorDepartment?: string | null;
     }): Promise<Evidence> {
-        const { data: evidence, error } = await supabase
-            .from("evidence")
-            .insert({
+        const insertData: Record<string, any> = {
                 rumor_id: data.rumorId,
                 evidence_type: data.evidenceType,
                 content_type: data.contentType,
                 content_url: data.contentUrl || null,
                 content_text: data.contentText || null,
                 creator_hash: data.creatorHash,
-            })
+        };
+
+        if (data.creatorDepartment) {
+            insertData.creator_department = data.creatorDepartment;
+        }
+
+        const { data: evidence, error } = await supabase
+            .from("evidence")
+            .insert(insertData)
             .select()
             .single();
+
+        // If creator_department column doesn't exist, retry without it
+        if (error && error.message?.includes('creator_department')) {
+            delete insertData.creator_department;
+            const retry = await supabase
+                .from("evidence")
+                .insert(insertData)
+                .select()
+                .single();
+            if (retry.error) throw retry.error;
+            return retry.data;
+        }
 
         if (error) throw error;
         return evidence;

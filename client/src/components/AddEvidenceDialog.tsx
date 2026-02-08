@@ -145,26 +145,31 @@ export function AddEvidenceDialog({ rumorId, disabled = false, disabledReason }:
                     Add Evidence
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md border-border/50 bg-card/95 backdrop-blur-xl">
+            <DialogContent className="sm:max-w-lg border-border/50 bg-card/95 backdrop-blur-xl">
                 <DialogHeader>
-                    <DialogTitle>Verify or Dispute</DialogTitle>
+                    <DialogTitle className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-primary/10">
+                            <PlusCircle className="h-4 w-4 text-primary" />
+                        </div>
+                        Submit Evidence
+                    </DialogTitle>
                     <DialogDescription>
-                        Contribute evidence to adjust the trust score of this
-                        rumor.
+                        Help verify or debunk this rumor by providing evidence.
+                        Your contribution affects the trust score.
                     </DialogDescription>
                 </DialogHeader>
 
                 <Form {...form}>
                     <form
                         onSubmit={form.handleSubmit(onSubmit)}
-                        className="space-y-6 py-4"
+                        className="space-y-5 py-2"
                     >
                         <FormField
                             control={form.control}
                             name="type"
                             render={({ field }) => (
                                 <FormItem className="space-y-3">
-                                    <Label>Stance</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Your Stance</Label>
                                     <FormControl>
                                         <RadioGroup
                                             onValueChange={field.onChange}
@@ -211,15 +216,20 @@ export function AddEvidenceDialog({ rumorId, disabled = false, disabledReason }:
                             name="content"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Label>Description</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Description</Label>
                                     <FormControl>
                                         <Textarea
                                             placeholder="Describe your evidence or argument..."
-                                            className="resize-none font-mono text-sm bg-secondary/50"
+                                            className="resize-none text-sm bg-secondary/50 min-h-[100px]"
                                             {...field}
                                         />
                                     </FormControl>
-                                    <FormMessage />
+                                    <div className="flex justify-between items-center">
+                                        <FormMessage />
+                                        <span className={`text-xs ${(field.value?.length || 0) > 450 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                            {field.value?.length || 0}/500
+                                        </span>
+                                    </div>
                                 </FormItem>
                             )}
                         />
@@ -229,11 +239,11 @@ export function AddEvidenceDialog({ rumorId, disabled = false, disabledReason }:
                             name="url"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Label>Link (Optional)</Label>
+                                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Source Link <span className="normal-case font-normal">(optional)</span></Label>
                                     <FormControl>
                                         <Input
                                             placeholder="https://..."
-                                            className="bg-secondary/50 font-mono text-sm"
+                                            className="bg-secondary/50 text-sm"
                                             {...field}
                                         />
                                     </FormControl>
@@ -244,7 +254,7 @@ export function AddEvidenceDialog({ rumorId, disabled = false, disabledReason }:
 
                         {/* Image Upload */}
                         <div className="space-y-2">
-                            <Label>Attach Image <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                            <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Attach Image <span className="normal-case font-normal">(optional)</span></Label>
                             <input
                                 type="file"
                                 ref={fileInputRef}

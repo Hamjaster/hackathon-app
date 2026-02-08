@@ -1,5 +1,6 @@
 import React from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
 import { LogOut, Terminal } from "lucide-react";
@@ -86,12 +87,15 @@ export function Navbar() {
                             className="w-56 font-mono text-xs"
                         >
                             <DropdownMenuLabel>
-                                <div className="flex flex-col space-y-1">
-                                    <p className="font-medium leading-none font-sans text-sm">
-                                        {user?.firstName && user?.lastName
-                                            ? `${user.firstName} ${user.lastName}`
-                                            : `User: ${user?.id || "Unknown"}`}
-                                    </p>
+                                <div className="flex flex-col space-y-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-medium leading-none font-sans text-sm">
+                                            {user?.firstName && user?.lastName
+                                                ? `${user.firstName} ${user.lastName}`
+                                                : `${user?.id || "Unknown"}`}
+                                        </p>
+                                        <DepartmentBadge userId={user?.id} size="sm" />
+                                    </div>
                                     <p className="text-xs leading-none text-muted-foreground">
                                         {user?.email || "Anonymous Session"}
                                     </p>
