@@ -197,9 +197,12 @@ export async function registerRoutes(
 
         try {
             const input = api.rumors.create.input.parse(req.body);
+            // Extract department from userId (e.g. "SEECS-A7F4B2C9" → "SEECS")
+            const posterDept = req.user!.id.split("-")[0] || null;
             const rumor = await storage.createRumor(
                 input.content,
                 input.imageUrl,
+                posterDept,
             );
             res.status(201).json(rumor);
         } catch (err) {
@@ -224,6 +227,7 @@ export async function registerRoutes(
         try {
             const input = api.evidence.create.input.parse(req.body);
             const userId = req.user!.id;
+            const posterDept = userId.split("-")[0] || null;
             const salt = process.env.VOTE_SALT || "HACKATHON_SECRET_SALT_2026";
             const creatorHash = createHash("sha256")
                 .update(`${userId}:${salt}:creator`)
@@ -241,6 +245,7 @@ export async function registerRoutes(
                 contentUrl: imageUrl || input.url || undefined,
                 contentText: input.content,
                 creatorHash,
+                creatorDepartment: posterDept,
             });
             res.status(201).json(evidence);
         } catch (err) {

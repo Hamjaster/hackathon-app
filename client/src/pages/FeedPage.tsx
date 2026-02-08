@@ -4,6 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { CreateRumorDialog } from "@/components/CreateRumorDialog";
 import { TrustScore } from "@/components/TrustScore";
 import { CountdownTimer } from "@/components/CountdownTimer";
+import { DepartmentBadge } from "@/components/DepartmentBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Card,
@@ -16,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
-import { MessageSquare, ArrowRight, AlertTriangle } from "lucide-react";
+import { MessageSquare, ArrowRight, AlertTriangle, Flame, Shield } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function FeedPage() {
@@ -52,12 +53,12 @@ export default function FeedPage() {
             <main className="container max-w-4xl py-8 px-4 mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">
+                        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                            <Shield className="h-7 w-7 text-primary" />
                             Rumor Feed
                         </h1>
                         <p className="text-muted-foreground mt-1">
-                            Active investigations and verified claims from the
-                            campus network.
+                            Active investigations and verified claims across NUST campus.
                         </p>
                     </div>
                     <CreateRumorDialog />
@@ -117,7 +118,7 @@ export default function FeedPage() {
                                             <div className="flex justify-between items-start gap-4">
                                                 <div className="flex flex-col gap-2 w-full">
                                                     <div className="flex justify-between items-center w-full">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <Badge
                                                                 variant="outline"
                                                                 className="font-mono text-[10px] uppercase tracking-wider bg-background/50"
@@ -130,6 +131,7 @@ export default function FeedPage() {
                                                                         "0",
                                                                     )}
                                                             </Badge>
+                                                            <DepartmentBadge department={(rumor as any).poster_department} size="sm" />
                                                             {((rumor as any)
                                                                 .score_above_75_since ||
                                                                 (rumor as any)

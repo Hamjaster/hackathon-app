@@ -8,7 +8,42 @@ const otpStore = new Map<string, { otp: string; expiresAt: number }>();
 
 // Constants
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
-const ALLOWED_DOMAIN = "@seecs.edu.pk";
+
+// NUST Department email domains
+const DEPARTMENT_DOMAINS: Record<string, { code: string; name: string }> = {
+  "seecs.edu.pk":   { code: "SEECS", name: "School of Electrical Engineering & Computer Science" },
+  "nbs.nust.edu.pk": { code: "NBS",   name: "NUST Business School" },
+  "s3h.nust.edu.pk": { code: "S3H",   name: "School of Social Sciences & Humanities" },
+  "scme.nust.edu.pk":{ code: "SCME",  name: "School of Chemical & Materials Engineering" },
+  "smme.nust.edu.pk":{ code: "SMME",  name: "School of Mechanical & Manufacturing Engineering" },
+  "nice.nust.edu.pk":{ code: "NICE",  name: "National Institute of Construction Engineering" },
+  "ceme.nust.edu.pk":{ code: "CEME",  name: "College of Electrical & Mechanical Engineering" },
+  "sns.nust.edu.pk": { code: "SNS",   name: "School of Natural Sciences" },
+  "sada.nust.edu.pk":{ code: "SADA",  name: "School of Art, Design & Architecture" },
+  "igis.nust.edu.pk":{ code: "IGIS",  name: "Institute of Geographical Information Systems" },
+  "rcms.nust.edu.pk":{ code: "RCMS",  name: "Research Centre for Modelling & Simulation" },
+  "nipcons.nust.edu.pk": { code: "NIPCONS", name: "NUST Institute of Peace & Conflict Studies" },
+};
+
+/**
+ * Get department info from email domain
+ */
+function getDepartment(email: string): { code: string; name: string } | null {
+  const emailLower = email.toLowerCase().trim();
+  for (const [domain, info] of Object.entries(DEPARTMENT_DOMAINS)) {
+    if (emailLower.endsWith(`@${domain}`)) {
+      return info;
+    }
+  }
+  return null;
+}
+
+/**
+ * Get all allowed domain suffixes for display
+ */
+export function getAllowedDomains(): string[] {
+  return Object.keys(DEPARTMENT_DOMAINS).map(d => `@${d}`);
+}
 
 /**
  * Generate a deterministic hash from email (one-way, not reversible)
@@ -18,12 +53,12 @@ function hashEmail(email: string): string {
 }
 
 /**
- * Generate a user-friendly unique ID from email hash
+ * Generate a user-friendly unique ID from email hash with department prefix
  */
-function generateUserId(emailHash: string): string {
+function generateUserId(emailHash: string, departmentCode: string): string {
   // Take first 8 characters of hash and convert to base36 for readability
   const numeric = parseInt(emailHash.substring(0, 16), 16);
-  const userId = `SEECS-${numeric.toString(36).toUpperCase().substring(0, 8)}`;
+  const userId = `${departmentCode}-${numeric.toString(36).toUpperCase().substring(0, 8)}`;
   return userId;
 }
 
@@ -48,10 +83,10 @@ function generateOTP(): string {
 }
 
 /**
- * Validate email domain
+ * Validate email domain - accepts all NUST department emails
  */
 function isValidEmail(email: string): boolean {
-  return email.toLowerCase().trim().endsWith(ALLOWED_DOMAIN);
+  return getDepartment(email) !== null;
 }
 
 export interface OTPRequestResult {
@@ -84,7 +119,7 @@ export async function requestOTP(email: string): Promise<OTPRequestResult> {
     if (!isValidEmail(email)) {
       return {
         success: false,
-        message: `Only emails ending with ${ALLOWED_DOMAIN} are allowed.`,
+        message: "Only NUST university emails are allowed (e.g. @seecs.edu.pk, @nbs.nust.edu.pk, @smme.nust.edu.pk, etc.)",
       };
     }
 
@@ -155,11 +190,12 @@ export async function verifyOTPAndRegister(
     if (!isValidEmail(email)) {
       return {
         success: false,
-        message: `Only emails ending with ${ALLOWED_DOMAIN} are allowed.`,
+        message: "Only NUST university emails are allowed (e.g. @seecs.edu.pk, @nbs.nust.edu.pk, @smme.nust.edu.pk, etc.)",
       };
     }
 
     const emailHash = hashEmail(email);
+    const department = getDepartment(email)!;
 
     // Check if already registered
     const { data: existingUser } = await supabase
@@ -204,18 +240,29 @@ export async function verifyOTPAndRegister(
     otpStore.delete(emailHash);
 
     // Generate credentials
-    const userId = generateUserId(emailHash);
+    const userId = generateUserId(emailHash, department.code);
     const password = generatePassword();
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Create user in database
-    const { error: dbError } = await supabase.from("auth_users").insert({
+    // Create user in database (department column is optional for backward compatibility)
+    const insertData: Record<string, any> = {
       user_id: userId,
       email_hash: emailHash,
       password_hash: passwordHash,
       created_at: new Date().toISOString(),
       last_login: new Date().toISOString(),
-    });
+    };
+
+    // Try with department first, fall back without it
+    let dbError;
+    const result1 = await supabase.from("auth_users").insert({ ...insertData, department: department.code });
+    if (result1.error && result1.error.message?.includes('department')) {
+      // Column doesn't exist yet, insert without it
+      const result2 = await supabase.from("auth_users").insert(insertData);
+      dbError = result2.error;
+    } else {
+      dbError = result1.error;
+    }
 
     if (dbError) {
       console.error("[Auth] Database error:", dbError);

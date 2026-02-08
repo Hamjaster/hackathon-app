@@ -101,37 +101,47 @@ export function CreateRumorDialog() {
           Submit Rumor
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md border-border/50 bg-card/95 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-lg border-border/50 bg-card/95 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle>Submit Anonymous Rumor</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-primary/10">
+              <Plus className="h-4 w-4 text-primary" />
+            </div>
+            Submit Anonymous Rumor
+          </DialogTitle>
           <DialogDescription>
-            Share news or claims about campus events. Your identity is cryptographically hashed and not stored with the content.
+            Share news or claims about campus events. Your identity is cryptographically hashed — no one can trace this back to you.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 py-2">
             <FormField
               control={form.control}
               name="content"
               render={({ field }) => (
                 <FormItem>
-                  <Label>Claim Content</Label>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">What did you hear?</Label>
                   <FormControl>
                     <Textarea 
                       placeholder="e.g. The library is closing early next week due to..." 
-                      className="min-h-[120px] resize-none font-mono text-sm bg-secondary/50 border-border focus:ring-primary/20"
+                      className="min-h-[120px] resize-none text-sm bg-secondary/50 border-border focus:ring-primary/20"
                       {...field} 
                     />
                   </FormControl>
-                  <FormMessage />
+                  <div className="flex justify-between items-center">
+                    <FormMessage />
+                    <span className={`text-xs ${(field.value?.length || 0) > 450 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {field.value?.length || 0}/500
+                    </span>
+                  </div>
                 </FormItem>
               )}
             />
 
             {/* Image Upload */}
             <div className="space-y-2">
-              <Label>Attach Image <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Attach Image <span className="normal-case font-normal">(optional)</span></Label>
               <input
                 type="file"
                 ref={fileInputRef}

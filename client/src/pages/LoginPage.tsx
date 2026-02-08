@@ -58,12 +58,12 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-border/50 shadow-2xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Shield className="h-6 w-6 text-primary" />
+          <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+            <Shield className="h-7 w-7 text-primary" />
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>
-            Login with your unique User ID and password
+            Login with your unique NUST department ID and password
           </CardDescription>
         </CardHeader>
 
@@ -82,7 +82,7 @@ export default function LoginPage() {
                 <Input
                   id="userId"
                   type="text"
-                  placeholder="SEECS-XXXXXXXX"
+                  placeholder="DEPT-XXXXXXXX"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value.toUpperCase())}
                   className="pl-10 font-mono"
@@ -90,6 +90,9 @@ export default function LoginPage() {
                   required
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                e.g. SEECS-A7F4B2C9, NBS-1D3E5F7A
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -135,7 +138,7 @@ export default function LoginPage() {
           </div>
 
           <div className="text-center text-xs text-muted-foreground mt-2">
-            <p>🔒 Your identity is protected</p>
+            <p>🔒 Your identity is protected across all NUST departments</p>
             <p>We never store personal information</p>
           </div>
         </CardFooter>

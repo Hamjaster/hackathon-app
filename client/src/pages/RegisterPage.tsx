@@ -106,12 +106,12 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-border/50 shadow-2xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-            <Shield className="h-6 w-6 text-primary" />
+          <div className="mx-auto mb-4 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-primary/20">
+            <Shield className="h-7 w-7 text-primary" />
           </div>
           <CardTitle className="text-2xl">Anonymous Registration</CardTitle>
           <CardDescription>
-            Register with your SEECS email. Your identity stays private.
+            Register with your NUST university email. Your identity stays private.
           </CardDescription>
         </CardHeader>
 
@@ -139,13 +139,13 @@ export default function RegisterPage() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Only @seecs.edu.pk emails are allowed
+                  Accepted: @seecs.edu.pk, @nbs.nust.edu.pk, @smme.nust.edu.pk, @scme.nust.edu.pk, @s3h.nust.edu.pk, and other NUST departments
                 </p>
               </div>
 
               <Button
                 onClick={handleRequestOTP}
-                disabled={loading || !email.includes("@seecs.edu.pk")}
+                disabled={loading || !email.includes("@")}
                 className="w-full"
               >
                 {loading ? (
