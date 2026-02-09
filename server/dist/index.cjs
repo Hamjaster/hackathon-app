@@ -1,4 +1,3 @@
-"use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -31,7 +30,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // node_modules/dotenv/package.json
 var require_package = __commonJS({
@@ -104,8 +102,8 @@ var require_package = __commonJS({
 // node_modules/dotenv/lib/main.js
 var require_main = __commonJS({
   "node_modules/dotenv/lib/main.js"(exports2, module2) {
-    var fs2 = require("fs");
-    var path2 = require("path");
+    var fs = require("fs");
+    var path = require("path");
     var os = require("os");
     var crypto = require("crypto");
     var packageJson = require_package();
@@ -246,7 +244,7 @@ var require_main = __commonJS({
       if (options && options.path && options.path.length > 0) {
         if (Array.isArray(options.path)) {
           for (const filepath of options.path) {
-            if (fs2.existsSync(filepath)) {
+            if (fs.existsSync(filepath)) {
               possibleVaultPath = filepath.endsWith(".vault") ? filepath : `${filepath}.vault`;
             }
           }
@@ -254,15 +252,15 @@ var require_main = __commonJS({
           possibleVaultPath = options.path.endsWith(".vault") ? options.path : `${options.path}.vault`;
         }
       } else {
-        possibleVaultPath = path2.resolve(process.cwd(), ".env.vault");
+        possibleVaultPath = path.resolve(process.cwd(), ".env.vault");
       }
-      if (fs2.existsSync(possibleVaultPath)) {
+      if (fs.existsSync(possibleVaultPath)) {
         return possibleVaultPath;
       }
       return null;
     }
     function _resolveHome(envPath) {
-      return envPath[0] === "~" ? path2.join(os.homedir(), envPath.slice(1)) : envPath;
+      return envPath[0] === "~" ? path.join(os.homedir(), envPath.slice(1)) : envPath;
     }
     function _configVault(options) {
       const debug = parseBoolean(process.env.DOTENV_CONFIG_DEBUG || options && options.debug);
@@ -279,7 +277,7 @@ var require_main = __commonJS({
       return { parsed };
     }
     function configDotenv(options) {
-      const dotenvPath = path2.resolve(process.cwd(), ".env");
+      const dotenvPath = path.resolve(process.cwd(), ".env");
       let encoding = "utf8";
       let processEnv = process.env;
       if (options && options.processEnv != null) {
@@ -307,13 +305,13 @@ var require_main = __commonJS({
       }
       let lastError;
       const parsedAll = {};
-      for (const path3 of optionPaths) {
+      for (const path2 of optionPaths) {
         try {
-          const parsed = DotenvModule.parse(fs2.readFileSync(path3, { encoding }));
+          const parsed = DotenvModule.parse(fs.readFileSync(path2, { encoding }));
           DotenvModule.populate(parsedAll, parsed, options);
         } catch (e) {
           if (debug) {
-            _debug(`Failed to load ${path3} ${e.message}`);
+            _debug(`Failed to load ${path2} ${e.message}`);
           }
           lastError = e;
         }
@@ -326,7 +324,7 @@ var require_main = __commonJS({
         const shortPaths = [];
         for (const filePath of optionPaths) {
           try {
-            const relative = path2.relative(process.cwd(), filePath);
+            const relative = path.relative(process.cwd(), filePath);
             shortPaths.push(relative);
           } catch (e) {
             if (debug) {
@@ -831,7 +829,6 @@ var require_lib = __commonJS({
 var import_supabase_js, supabaseUrl, supabaseServiceKey, supabase;
 var init_supabase = __esm({
   "supabase.ts"() {
-    "use strict";
     import_supabase_js = require("@supabase/supabase-js");
     supabaseUrl = process.env.SUPABASE_URL;
     supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -1087,7 +1084,6 @@ function censorProfanity(text2) {
 var GEMINI_BASE, MODEL;
 var init_analyzer = __esm({
   "ai/analyzer.ts"() {
-    "use strict";
     GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
     MODEL = "gemini-2.5-flash";
   }
@@ -1225,7 +1221,6 @@ IMPORTANT: Save these credentials! We cannot recover them as we don't store your
 var import_nodemailer, createTransporter;
 var init_email = __esm({
   "email.ts"() {
-    "use strict";
     import_nodemailer = __toESM(require("nodemailer"), 1);
     createTransporter = () => {
       console.log("[Email] SMTP Config:", {
@@ -1447,7 +1442,6 @@ async function login(userId, password) {
 var import_crypto2, import_bcryptjs, otpStore, OTP_EXPIRY_MS, DEPARTMENT_DOMAINS;
 var init_auth = __esm({
   "auth.ts"() {
-    "use strict";
     import_crypto2 = require("crypto");
     import_bcryptjs = __toESM(require("bcryptjs"), 1);
     init_supabase();
@@ -1479,13 +1473,6 @@ var init_auth = __esm({
   }
 });
 
-// index.ts
-var index_exports = {};
-__export(index_exports, {
-  log: () => log
-});
-module.exports = __toCommonJS(index_exports);
-
 // node_modules/dotenv/config.js
 (function() {
   require_main().config(
@@ -1498,8 +1485,9 @@ module.exports = __toCommonJS(index_exports);
 })();
 
 // index.ts
+var import_http = require("http");
 var import_cors = __toESM(require_lib(), 1);
-var import_express3 = __toESM(require("express"), 1);
+var import_express2 = __toESM(require("express"), 1);
 
 // storage.ts
 init_supabase();
@@ -2839,8 +2827,8 @@ function getErrorMap() {
 
 // node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path2, errorMaps, issueData } = params;
-  const fullPath = [...path2, ...issueData.path || []];
+  const { data, path, errorMaps, issueData } = params;
+  const fullPath = [...path, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -2956,11 +2944,11 @@ var errorUtil;
 
 // node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path2, key) {
+  constructor(parent, value, path, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path2;
+    this._path = path;
     this._key = key;
   }
   get path() {
@@ -10138,76 +10126,24 @@ async function seedData() {
 }
 seedData();
 
-// static.ts
-var import_express2 = __toESM(require("express"), 1);
-var import_fs = __toESM(require("fs"), 1);
-var import_path = __toESM(require("path"), 1);
-function serveStatic(app2) {
-  const distPath = process.env.CLIENT_DIST ? import_path.default.resolve(process.env.CLIENT_DIST) : import_path.default.resolve(__dirname, "public");
-  if (!import_fs.default.existsSync(distPath)) {
-    return;
-  }
-  app2.use(import_express2.default.static(distPath));
-  app2.use("/{*path}", (_req, res) => {
-    res.sendFile(import_path.default.resolve(distPath, "index.html"));
-  });
-}
-
 // index.ts
-var import_http = require("http");
-var app = (0, import_express3.default)();
+var app = (0, import_express2.default)();
 var httpServer = (0, import_http.createServer)(app);
-var clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
-app.use((0, import_cors.default)({ origin: clientOrigin, credentials: true }));
-app.use(
-  import_express3.default.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    }
-  })
-);
-app.use(import_express3.default.urlencoded({ extended: false }));
-function log(message, source = "express") {
-  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path2 = req.path;
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path2.startsWith("/api")) {
-      log(`${req.method} ${path2} ${res.statusCode} in ${duration}ms`);
-    }
-  });
-  next();
-});
+var port = parseInt(process.env.PORT || "5000", 10);
+app.use((0, import_cors.default)({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173", credentials: true }));
+app.use(import_express2.default.json());
+app.use(import_express2.default.urlencoded({ extended: false }));
 (async () => {
   await registerRoutes(httpServer, app);
-  app.use((err, _req, res, next) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    console.error("Internal Server Error:", err);
-    if (res.headersSent) {
-      return next(err);
-    }
-    return res.status(status).json({ message });
+  app.use((err, _req, res, _next) => {
+    const status = err.status ?? err.statusCode ?? 500;
+    const message = err.message ?? "Internal Server Error";
+    if (!res.headersSent) res.status(status).json({ message });
   });
-  serveStatic(app);
-  const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen(port, "0.0.0.0", () => {
-    log(`serving on port ${port}`);
+    console.log(`Server listening on port ${port}`);
   });
 })();
-// Annotate the CommonJS export names for ESM import in node:
-0 && (module.exports = {
-  log
-});
 /*! Bundled license information:
 
 object-assign/index.js:
