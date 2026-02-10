@@ -11,17 +11,17 @@ const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 
 // NUST Department email domains
 const DEPARTMENT_DOMAINS: Record<string, { code: string; name: string }> = {
-  "seecs.edu.pk":   { code: "SEECS", name: "School of Electrical Engineering & Computer Science" },
-  "nbs.nust.edu.pk": { code: "NBS",   name: "NUST Business School" },
-  "s3h.nust.edu.pk": { code: "S3H",   name: "School of Social Sciences & Humanities" },
-  "scme.nust.edu.pk":{ code: "SCME",  name: "School of Chemical & Materials Engineering" },
-  "smme.nust.edu.pk":{ code: "SMME",  name: "School of Mechanical & Manufacturing Engineering" },
-  "nice.nust.edu.pk":{ code: "NICE",  name: "National Institute of Construction Engineering" },
-  "ceme.nust.edu.pk":{ code: "CEME",  name: "College of Electrical & Mechanical Engineering" },
-  "sns.nust.edu.pk": { code: "SNS",   name: "School of Natural Sciences" },
-  "sada.nust.edu.pk":{ code: "SADA",  name: "School of Art, Design & Architecture" },
-  "igis.nust.edu.pk":{ code: "IGIS",  name: "Institute of Geographical Information Systems" },
-  "rcms.nust.edu.pk":{ code: "RCMS",  name: "Research Centre for Modelling & Simulation" },
+  "seecs.edu.pk": { code: "SEECS", name: "School of Electrical Engineering & Computer Science" },
+  "nbs.nust.edu.pk": { code: "NBS", name: "NUST Business School" },
+  "s3h.nust.edu.pk": { code: "S3H", name: "School of Social Sciences & Humanities" },
+  "scme.nust.edu.pk": { code: "SCME", name: "School of Chemical & Materials Engineering" },
+  "smme.nust.edu.pk": { code: "SMME", name: "School of Mechanical & Manufacturing Engineering" },
+  "nice.nust.edu.pk": { code: "NICE", name: "National Institute of Construction Engineering" },
+  "ceme.nust.edu.pk": { code: "CEME", name: "College of Electrical & Mechanical Engineering" },
+  "sns.nust.edu.pk": { code: "SNS", name: "School of Natural Sciences" },
+  "sada.nust.edu.pk": { code: "SADA", name: "School of Art, Design & Architecture" },
+  "igis.nust.edu.pk": { code: "IGIS", name: "Institute of Geographical Information Systems" },
+  "rcms.nust.edu.pk": { code: "RCMS", name: "Research Centre for Modelling & Simulation" },
   "nipcons.nust.edu.pk": { code: "NIPCONS", name: "NUST Institute of Peace & Conflict Studies" },
 };
 
@@ -244,22 +244,31 @@ export async function verifyOTPAndRegister(
     const password = generatePassword();
     const passwordHash = await bcrypt.hash(password, 10);
 
+    const emailStored = email.toLowerCase().trim();
+
     // Create user in database (department column is optional for backward compatibility)
+    // email is stored for internal use only; never returned to client or shown in app
     const insertData: Record<string, any> = {
       user_id: userId,
       email_hash: emailHash,
+      email: emailStored,
       password_hash: passwordHash,
       created_at: new Date().toISOString(),
       last_login: new Date().toISOString(),
     };
 
-    // Try with department first, fall back without it
-    let dbError;
-    const result1 = await supabase.from("auth_users").insert({ ...insertData, department: department.code });
-    if (result1.error && result1.error.message?.includes('department')) {
-      // Column doesn't exist yet, insert without it
+    // Try with department first, then fall back without it; same for email column
+    let dbError: Error | null = null;
+    const withDept = { ...insertData, department: department.code };
+    const result1 = await supabase.from("auth_users").insert(withDept);
+    if (result1.error && result1.error.message?.includes("department")) {
       const result2 = await supabase.from("auth_users").insert(insertData);
-      dbError = result2.error;
+      if (result2.error && result2.error.message?.includes("email")) {
+        const { email: _e, ...insertWithoutEmail } = insertData;
+        dbError = (await supabase.from("auth_users").insert(insertWithoutEmail)).error;
+      } else {
+        dbError = result2.error;
+      }
     } else {
       dbError = result1.error;
     }

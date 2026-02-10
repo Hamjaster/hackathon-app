@@ -10,6 +10,16 @@ import { Mail, Shield, KeyRound, Loader2, CheckCircle, Copy } from "lucide-react
 import { useToast } from "@/hooks/use-toast";
 import { apiUrl } from "@/lib/api";
 
+/** Mask email so it is never shown in full in the app (e.g. "ab***@seecs.edu.pk"). */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  const maskedLocal = local.length <= 2 ? "***" : local.slice(0, 2) + "***";
+  return `${maskedLocal}@${domain}`;
+}
+
 export default function RegisterPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -167,7 +177,9 @@ export default function RegisterPage() {
             <div className="space-y-4">
               <div className="p-4 bg-muted/50 rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">OTP sent to:</p>
-                <p className="font-mono text-sm mt-1">{email}</p>
+                <p className="font-mono text-sm mt-1">
+                  {maskEmail(email)}
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -268,7 +280,7 @@ export default function RegisterPage() {
                 <AlertDescription className="text-sm">
                   <strong>⚠️ Save These Credentials!</strong>
                   <ul className="mt-2 space-y-1 text-xs">
-                    <li>• Your email is NOT stored (for privacy)</li>
+                    <li>• Your email is stored securely and never shown in the app</li>
                     <li>• We cannot recover these if lost</li>
                     <li>• Check your email for a backup copy</li>
                   </ul>

@@ -13,6 +13,10 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173", cre
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+app.get("/", (_req, res) => {
+  res.json({ ok: true, message: "Server is running" });
+});
+
 (async () => {
   await registerRoutes(httpServer, app);
 
