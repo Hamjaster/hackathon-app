@@ -1,5 +1,5 @@
-import { useRoute } from "wouter";
 import React from "react";
+import { useParams } from "react-router-dom";
 import { useRumor, useVoteEvidence } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { TrustScore } from "@/components/TrustScore";
@@ -36,8 +36,7 @@ import {
 } from "recharts";
 
 export default function RumorDetailPage() {
-    const [match, params] = useRoute("/rumor/:id");
-    const id = params?.id || "";
+    const { id = "" } = useParams<{ id?: string }>();
     const { data: rumor, isLoading, error, refetch } = useRumor(id);
     const voteEvidence = useVoteEvidence();
 
@@ -89,24 +88,7 @@ export default function RumorDetailPage() {
                     <Card className="mb-6 border-2 border-amber-500/50 bg-amber-500/10">
                         <CardContent className="pt-6">
                             <div className="flex items-center gap-4">
-                                <div className="flex-shrink-0">
-                                    {isExpired ? (
-                                        <Badge className="bg-amber-500 text-black font-bold text-lg px-4 py-2">
-                                            ⏸️ EXPIRED
-                                        </Badge>
-                                    ) : (
-                                        <Badge className={`font-bold text-lg px-4 py-2 ${(rumor as any).status === "Verified"
-                                            ? "bg-[hsl(var(--status-verified))] text-white"
-                                            : (rumor as any).status === "Debunked"
-                                                ? "bg-destructive text-white"
-                                                : "bg-muted text-foreground"
-                                            }`}>
-                                            {(rumor as any).status === "Verified" && "✓ VERIFIED"}
-                                            {(rumor as any).status === "Debunked" && "✗ DEBUNKED"}
-                                            {(rumor as any).status === "Inconclusive" && "⚠️ INCONCLUSIVE"}
-                                        </Badge>
-                                    )}
-                                </div>
+
                                 <div className="flex-1">
                                     <h3 className="font-semibold text-lg mb-1">
                                         {isExpired ? "This rumor has expired" : `This rumor has been ${(rumor as any).status.toLowerCase()}`}

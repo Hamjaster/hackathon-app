@@ -2,7 +2,7 @@ import React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { DepartmentBadge } from "@/components/DepartmentBadge";
 import { Button } from "@/components/ui/button";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation } from "react-router-dom";
 import { LogOut, Terminal } from "lucide-react";
 import {
     DropdownMenu,
@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
     const { user, isLoading, logout } = useAuth();
-    const [location] = useLocation();
+    const location = useLocation();
 
     // Show loading skeleton while auth status is being determined
     if (isLoading) {
@@ -37,7 +37,7 @@ export function Navbar() {
             <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
                 <div className="flex items-center gap-6">
                     <Link
-                        href="/"
+                        to="/"
                         className="flex items-center gap-2 font-bold text-lg tracking-tight hover:opacity-80 transition-opacity"
                     >
                         <div className="p-1.5 bg-primary/10 rounded-lg border border-primary/20">
@@ -51,8 +51,8 @@ export function Navbar() {
 
                     <nav className="flex items-center gap-1">
                         <Link
-                            href="/"
-                            className={`text-sm font-medium transition-colors hover:text-primary ${location === "/" ? "text-foreground" : "text-muted-foreground"}`}
+                            to="/"
+                            className={`text-sm font-medium transition-colors hover:text-primary ${location.pathname === "/" ? "text-foreground" : "text-muted-foreground"}`}
                         >
                             Feed
                         </Link>

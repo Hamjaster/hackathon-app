@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +21,7 @@ function maskEmail(email: string): string {
 }
 
 export default function RegisterPage() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -49,7 +49,7 @@ export default function RegisterPage() {
         setError(data.message);
         if (data.alreadyRegistered) {
           // Redirect to login
-          setTimeout(() => setLocation("/login"), 2000);
+          setTimeout(() => navigate("/login"), 2000);
         }
         return;
       }
@@ -112,7 +112,7 @@ export default function RegisterPage() {
       localStorage.setItem("userId", credentials.userId);
     }
     await queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
-    setLocation("/");
+    navigate("/");
   };
 
   return (

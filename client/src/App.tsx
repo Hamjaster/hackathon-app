@@ -1,5 +1,12 @@
-import React, { useEffect } from "react";
-import { Switch, Route, useLocation } from "wouter";
+import React from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,19 +21,9 @@ import RumorDetailPage from "@/pages/RumorDetailPage";
 import RegisterPage from "@/pages/RegisterPage";
 import LoginPage from "@/pages/LoginPage";
 
-function Router() {
+function AuthGuard() {
   const { user, isLoading } = useAuth();
-  const [location, setLocation] = useLocation();
-
-  // Redirect unauthenticated users to login/register (single source of truth: React Query auth)
-  useEffect(() => {
-    if (isLoading) return;
-    const isAuthenticated = !!user;
-    const publicRoutes = ["/register", "/login"];
-    if (!isAuthenticated && !publicRoutes.includes(location)) {
-      setLocation("/login");
-    }
-  }, [user, isLoading, location, setLocation]);
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -41,23 +38,34 @@ function Router() {
     );
   }
 
-  return (
-    <Switch>
-      <Route path="/register" component={RegisterPage} />
-      <Route path="/login" component={LoginPage} />
-      <Route path="/" component={FeedPage} />
-      <Route path="/rumor/:id" component={RumorDetailPage} />
-      <Route component={NotFound} />
-    </Switch>
-  );
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
+  }
+
+  return <Outlet />;
 }
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Router />
-        <Toaster />
+        <BrowserRouter>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
+
+            {/* Protected routes */}
+            <Route element={<AuthGuard />}>
+              <Route path="/" element={<FeedPage />} />
+              <Route path="/rumor/:id" element={<RumorDetailPage />} />
+            </Route>
+
+            {/* Fallback */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
