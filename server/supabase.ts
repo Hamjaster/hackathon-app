@@ -328,7 +328,6 @@ export interface Database {
                     id: string;
                     user_id: string;
                     email_hash: string;
-                    email: string | null; // Stored for internal use only; never exposed to client
                     password_hash: string;
                     created_at: string;
                     last_login: string | null;
@@ -338,14 +337,12 @@ export interface Database {
                     id?: string;
                     user_id: string;
                     email_hash: string;
-                    email?: string | null;
                     password_hash: string;
                     created_at?: string;
                     last_login?: string | null;
                     is_active?: boolean;
                 };
                 Update: {
-                    email?: string | null;
                     last_login?: string | null;
                     is_active?: boolean;
                 };

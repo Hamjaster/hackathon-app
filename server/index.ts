@@ -2,22 +2,16 @@ import "dotenv/config";
 import { createServer } from "http";
 import cors from "cors";
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.js";
-import { serveStatic } from "./static.js";
+import { registerRoutes } from "./routes";
+import { serveStatic } from "./static";
 
 const app = express();
 const httpServer = createServer(app);
 const port = parseInt(process.env.PORT || "5000", 10);
 
-// Enable CORS for all origins while still allowing credentials (cookies)
-// `origin: true` reflects the incoming Origin header instead of using "*"
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-app.get("/", (_req, res) => {
-  res.json({ ok: true, message: "Server is running" });
-});
 
 (async () => {
   await registerRoutes(httpServer, app);

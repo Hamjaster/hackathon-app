@@ -11,10 +11,10 @@ import {
 import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-import { users } from "./models/auth.js";
+import { users } from "./models/auth";
 
 // Re-export auth models
-export * from "./models/auth.js";
+export * from "./models/auth";
 
 export const rumorStatusEnum = pgEnum("rumor_status", [
     "active",
@@ -22,6 +22,16 @@ export const rumorStatusEnum = pgEnum("rumor_status", [
     "debunked",
     "inconclusive",
 ]);
+
+// Backup codes for password recovery
+export const backupCodes = pgTable("backup_codes", {
+    id: serial("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    codeHash: text("code_hash").notNull(),
+    used: boolean("used").default(false).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    usedAt: timestamp("used_at"),
+});
 
 export const rumors = pgTable("rumors", {
     id: serial("id").primaryKey(),
