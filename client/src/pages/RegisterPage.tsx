@@ -123,9 +123,20 @@ export default function RegisterPage() {
     const handleContinue = async () => {
         if (credentials) {
             localStorage.setItem("userId", credentials.userId);
+
+            // Immediately sync auth cache so protected routing sees logged-in state
+            queryClient.setQueryData(["/api/auth/status"], {
+                id: credentials.userId,
+                email: null,
+                firstName: null,
+                lastName: null,
+                profileImageUrl: null,
+                createdAt: null,
+                updatedAt: null,
+            });
         }
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
-        navigate("/");
+        navigate("/", { replace: true });
     };
 
     // Show backup codes display if credentials exist

@@ -57,13 +57,24 @@ export default function LoginPage() {
             // Store userId in localStorage
             localStorage.setItem("userId", data.userId);
 
+            // Immediately sync auth cache so protected routing sees logged-in state
+            queryClient.setQueryData(["/api/auth/status"], {
+                id: data.userId,
+                email: null,
+                firstName: null,
+                lastName: null,
+                profileImageUrl: null,
+                createdAt: null,
+                updatedAt: null,
+            });
+
             // Invalidate auth query so Router sees the new user and doesn't redirect back to login
             await queryClient.invalidateQueries({
                 queryKey: ["/api/auth/status"],
             });
 
             // Redirect to home (Router will now have fresh auth state from useAuth())
-            navigate("/");
+            navigate("/", { replace: true });
         } catch (err) {
             setError("Failed to login. Please try again.");
         } finally {
