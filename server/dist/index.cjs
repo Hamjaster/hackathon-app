@@ -459,7 +459,7 @@ var require_cli_options = __commonJS({
   "node_modules/dotenv/lib/cli-options.js"(exports2, module2) {
     var re = /^dotenv_config_(encoding|path|quiet|debug|override|DOTENV_KEY)=(.+)$/;
     module2.exports = function optionMatcher(args) {
-      const options = args.reduce(function(acc, cur) {
+      const options = args.reduce(function (acc, cur) {
         const matches = cur.match(re);
         if (matches) {
           acc[matches[1]] = matches[2];
@@ -501,14 +501,14 @@ var require_object_assign = __commonJS({
         for (var i = 0; i < 10; i++) {
           test2["_" + String.fromCharCode(i)] = i;
         }
-        var order2 = Object.getOwnPropertyNames(test2).map(function(n) {
+        var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
           return test2[n];
         });
         if (order2.join("") !== "0123456789") {
           return false;
         }
         var test3 = {};
-        "abcdefghijklmnopqrst".split("").forEach(function(letter) {
+        "abcdefghijklmnopqrst".split("").forEach(function (letter) {
           test3[letter] = letter;
         });
         if (Object.keys(Object.assign({}, test3)).join("") !== "abcdefghijklmnopqrst") {
@@ -519,7 +519,7 @@ var require_object_assign = __commonJS({
         return false;
       }
     }
-    module2.exports = shouldUseNative() ? Object.assign : function(target, source) {
+    module2.exports = shouldUseNative() ? Object.assign : function (target, source) {
       var from;
       var to = toObject(target);
       var symbols;
@@ -620,7 +620,7 @@ var require_vary = __commonJS({
 // node_modules/cors/lib/index.js
 var require_lib = __commonJS({
   "node_modules/cors/lib/index.js"(exports2, module2) {
-    (function() {
+    (function () {
       "use strict";
       var assign = require_object_assign();
       var vary = require_vary();
@@ -786,12 +786,12 @@ var require_lib = __commonJS({
         if (typeof o === "function") {
           optionsCallback = o;
         } else {
-          optionsCallback = function(req, cb) {
+          optionsCallback = function (req, cb) {
             cb(null, o);
           };
         }
         return function corsMiddleware(req, res, next) {
-          optionsCallback(req, function(err, options) {
+          optionsCallback(req, function (err, options) {
             if (err) {
               next(err);
             } else {
@@ -800,12 +800,12 @@ var require_lib = __commonJS({
               if (corsOptions.origin && typeof corsOptions.origin === "function") {
                 originCallback = corsOptions.origin;
               } else if (corsOptions.origin) {
-                originCallback = function(origin, cb) {
+                originCallback = function (origin, cb) {
                   cb(null, corsOptions.origin);
                 };
               }
               if (originCallback) {
-                originCallback(req.headers.origin, function(err2, origin) {
+                originCallback(req.headers.origin, function (err2, origin) {
                   if (err2 || !origin) {
                     next(err2);
                   } else {
@@ -1249,6 +1249,9 @@ __export(auth_exports, {
   getAllowedDomains: () => getAllowedDomains,
   login: () => login,
   requestOTP: () => requestOTP,
+  resetPassword: () => resetPassword,
+  resetPasswordWithBackupCode: () => resetPasswordWithBackupCode,
+  verifyBackupCode: () => verifyBackupCode,
   verifyOTPAndRegister: () => verifyOTPAndRegister
 });
 function getDepartment(email) {
@@ -1278,6 +1281,21 @@ function generatePassword() {
     words.push(num.toString().padStart(4, "0"));
   }
   return words.join("-");
+}
+function generateBackupCodes(count = 8) {
+  const codes = [];
+  for (let i = 0; i < count; i++) {
+    const parts = [];
+    for (let j = 0; j < 3; j++) {
+      const num = (0, import_crypto2.randomBytes)(2).readUInt16BE(0) % 1e4;
+      parts.push(num.toString(36).toUpperCase().padStart(4, "0"));
+    }
+    codes.push(parts.join("-"));
+  }
+  return codes;
+}
+function hashBackupCode(code) {
+  return (0, import_crypto2.createHash)("sha256").update(code.toUpperCase().trim()).digest("hex");
 }
 function generateOTP() {
   return Math.floor(1e5 + Math.random() * 9e5).toString();
@@ -1391,14 +1409,27 @@ async function verifyOTPAndRegister(email, otp) {
         message: "Failed to create account. Please try again."
       };
     }
+    const backupCodes2 = generateBackupCodes(8);
+    const backupCodeInserts = backupCodes2.map((code) => ({
+      user_id: userId,
+      code_hash: hashBackupCode(code),
+      used: false,
+      created_at: (/* @__PURE__ */ new Date()).toISOString()
+    }));
+    const { error: codesError } = await supabase.from("backup_codes").insert(backupCodeInserts);
+    if (codesError) {
+      console.error("[Auth] Error storing backup codes:", codesError);
+    }
     const emailSent = await sendCredentialsEmail(email, userId, password);
     console.log(`[Auth] User created: ${userId}`);
     console.log(`[Auth] Password for testing: ${password}`);
+    console.log(`[Auth] Backup codes generated: ${backupCodes2.length}`);
     return {
       success: true,
       message: emailSent ? "Account created! Check your email for login credentials." : "Account created! Here are your credentials (email failed to send).",
       userId,
-      password
+      password,
+      backupCodes: backupCodes2
     };
   } catch (error) {
     console.error("[Auth] Error verifying OTP:", error);
@@ -1417,7 +1448,10 @@ async function login(userId, password) {
         message: "Invalid User ID or password."
       };
     }
-    const passwordValid = await import_bcryptjs.default.compare(password, user.password_hash);
+    const passwordValid = await import_bcryptjs.default.compare(
+      password,
+      user.password_hash
+    );
     if (!passwordValid) {
       return {
         success: false,
@@ -1439,6 +1473,82 @@ async function login(userId, password) {
     };
   }
 }
+async function verifyBackupCode(userId, backupCode) {
+  try {
+    const codeHash = hashBackupCode(backupCode);
+    const { data: codes, error } = await supabase.from("backup_codes").select("id, used").eq("user_id", userId).eq("code_hash", codeHash).maybeSingle();
+    if (error || !codes) {
+      return {
+        success: false,
+        message: "Invalid backup code."
+      };
+    }
+    if (codes.used) {
+      return {
+        success: false,
+        message: "This backup code has already been used."
+      };
+    }
+    await supabase.from("backup_codes").update({
+      used: true,
+      used_at: (/* @__PURE__ */ new Date()).toISOString()
+    }).eq("id", codes.id);
+    console.log(`[Auth] Backup code verified for user: ${userId}`);
+    return {
+      success: true,
+      message: "Backup code verified!",
+      userId
+    };
+  } catch (error) {
+    console.error("[Auth] Error verifying backup code:", error);
+    return {
+      success: false,
+      message: "An error occurred. Please try again."
+    };
+  }
+}
+async function resetPassword(userId, newPassword) {
+  try {
+    const { data: user, error } = await supabase.from("auth_users").select("user_id").eq("user_id", userId).maybeSingle();
+    if (error || !user) {
+      return {
+        success: false,
+        message: "User not found."
+      };
+    }
+    const passwordHash = await import_bcryptjs.default.hash(newPassword, 10);
+    const { error: updateError } = await supabase.from("auth_users").update({ password_hash: passwordHash }).eq("user_id", userId);
+    if (updateError) {
+      console.error("[Auth] Error updating password:", updateError);
+      return {
+        success: false,
+        message: "Failed to reset password. Please try again."
+      };
+    }
+    console.log(`[Auth] Password reset for user: ${userId}`);
+    return {
+      success: true,
+      message: "Password reset successful!",
+      newPassword
+    };
+  } catch (error) {
+    console.error("[Auth] Error resetting password:", error);
+    return {
+      success: false,
+      message: "An error occurred. Please try again."
+    };
+  }
+}
+async function resetPasswordWithBackupCode(userId, backupCode, newPassword) {
+  const verifyResult = await verifyBackupCode(userId, backupCode);
+  if (!verifyResult.success) {
+    return {
+      success: false,
+      message: verifyResult.message
+    };
+  }
+  return resetPassword(userId, newPassword);
+}
 var import_crypto2, import_bcryptjs, otpStore, OTP_EXPIRY_MS, DEPARTMENT_DOMAINS;
 var init_auth = __esm({
   "auth.ts"() {
@@ -1449,32 +1559,69 @@ var init_auth = __esm({
     otpStore = /* @__PURE__ */ new Map();
     OTP_EXPIRY_MS = 10 * 60 * 1e3;
     DEPARTMENT_DOMAINS = {
-      "seecs.edu.pk": { code: "SEECS", name: "School of Electrical Engineering & Computer Science" },
+      "seecs.edu.pk": {
+        code: "SEECS",
+        name: "School of Electrical Engineering & Computer Science"
+      },
       "nbs.nust.edu.pk": { code: "NBS", name: "NUST Business School" },
-      "s3h.nust.edu.pk": { code: "S3H", name: "School of Social Sciences & Humanities" },
-      "scme.nust.edu.pk": { code: "SCME", name: "School of Chemical & Materials Engineering" },
-      "smme.nust.edu.pk": { code: "SMME", name: "School of Mechanical & Manufacturing Engineering" },
-      "nice.nust.edu.pk": { code: "NICE", name: "National Institute of Construction Engineering" },
-      "ceme.nust.edu.pk": { code: "CEME", name: "College of Electrical & Mechanical Engineering" },
+      "s3h.nust.edu.pk": {
+        code: "S3H",
+        name: "School of Social Sciences & Humanities"
+      },
+      "scme.nust.edu.pk": {
+        code: "SCME",
+        name: "School of Chemical & Materials Engineering"
+      },
+      "smme.nust.edu.pk": {
+        code: "SMME",
+        name: "School of Mechanical & Manufacturing Engineering"
+      },
+      "nice.nust.edu.pk": {
+        code: "NICE",
+        name: "National Institute of Construction Engineering"
+      },
+      "ceme.nust.edu.pk": {
+        code: "CEME",
+        name: "College of Electrical & Mechanical Engineering"
+      },
       "sns.nust.edu.pk": { code: "SNS", name: "School of Natural Sciences" },
-      "sada.nust.edu.pk": { code: "SADA", name: "School of Art, Design & Architecture" },
-      "igis.nust.edu.pk": { code: "IGIS", name: "Institute of Geographical Information Systems" },
-      "rcms.nust.edu.pk": { code: "RCMS", name: "Research Centre for Modelling & Simulation" },
-      "nipcons.nust.edu.pk": { code: "NIPCONS", name: "NUST Institute of Peace & Conflict Studies" }
-    };
-    setInterval(() => {
-      const now = Date.now();
-      for (const [key, value] of otpStore.entries()) {
-        if (now > value.expiresAt) {
-          otpStore.delete(key);
-        }
+      "sada.nust.edu.pk": {
+        code: "SADA",
+        name: "School of Art, Design & Architecture"
+      },
+      "igis.nust.edu.pk": {
+        code: "IGIS",
+        name: "Institute of Geographical Information Systems"
+      },
+      "rcms.nust.edu.pk": {
+        code: "RCMS",
+        name: "Research Centre for Modelling & Simulation"
+      },
+      "nipcons.nust.edu.pk": {
+        code: "NIPCONS",
+        name: "NUST Institute of Peace & Conflict Studies"
+      },
+      "student.nust.edu.pk": {
+        code: "STUDENT",
+        name: "NUST Student"
       }
-    }, 5 * 60 * 1e3);
+    };
+    setInterval(
+      () => {
+        const now = Date.now();
+        for (const [key, value] of otpStore.entries()) {
+          if (now > value.expiresAt) {
+            otpStore.delete(key);
+          }
+        }
+      },
+      5 * 60 * 1e3
+    );
   }
 });
 
 // node_modules/dotenv/config.js
-(function() {
+(function () {
   require_main().config(
     Object.assign(
       {},
@@ -2229,6 +2376,20 @@ var DatabaseStorage = class {
     }
     return { resolved: resolvedRumors.length, rumors: resolvedRumors };
   }
+  async clearImageByModerationRejection(secureUrl) {
+    const normalizedUrl = secureUrl.trim();
+    if (!normalizedUrl) return { rumorsUpdated: 0, evidenceUpdated: 0 };
+    const { data: rumorRows } = await supabase.from("rumors").update({ image_url: null, updated_at: (/* @__PURE__ */ new Date()).toISOString() }).eq("image_url", normalizedUrl).select("id");
+    const { data: evidenceRows } = await supabase.from("evidence").update({ content_url: null, content_type: "text" }).eq("content_type", "image").eq("content_url", normalizedUrl).select("id");
+    const rumorsUpdated = rumorRows?.length ?? 0;
+    const evidenceUpdated = evidenceRows?.length ?? 0;
+    if (rumorsUpdated > 0 || evidenceUpdated > 0) {
+      console.log(
+        `[Moderation] Cleared image ${normalizedUrl.slice(0, 50)}... \u2014 rumors: ${rumorsUpdated}, evidence: ${evidenceUpdated}`
+      );
+    }
+    return { rumorsUpdated, evidenceUpdated };
+  }
   // Rumor Relationships (DAG) Methods
   async createRumorRelationship(data) {
     try {
@@ -2463,7 +2624,7 @@ __export(external_exports, {
 
 // node_modules/zod/v3/helpers/util.js
 var util;
-(function(util2) {
+(function (util2) {
   util2.assertEqual = (_) => {
   };
   function assertIs(_arg) {
@@ -2489,7 +2650,7 @@ var util;
     return util2.objectValues(filtered);
   };
   util2.objectValues = (obj) => {
-    return util2.objectKeys(obj).map(function(e) {
+    return util2.objectKeys(obj).map(function (e) {
       return obj[e];
     });
   };
@@ -2522,7 +2683,7 @@ var util;
   };
 })(util || (util = {}));
 var objectUtil;
-(function(objectUtil2) {
+(function (objectUtil2) {
   objectUtil2.mergeShapes = (first, second) => {
     return {
       ...first,
@@ -2641,7 +2802,7 @@ var ZodError = class _ZodError extends Error {
     this.issues = issues;
   }
   format(_mapper) {
-    const mapper = _mapper || function(issue) {
+    const mapper = _mapper || function (issue) {
       return issue.message;
     };
     const fieldErrors = { _errors: [] };
@@ -2937,7 +3098,7 @@ var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
 // node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
-(function(errorUtil2) {
+(function (errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
@@ -5656,7 +5817,7 @@ var ZodFunction = class _ZodFunction extends ZodType {
     const fn = ctx.data;
     if (this._def.returns instanceof ZodPromise) {
       const me = this;
-      return OK(async function(...args) {
+      return OK(async function (...args) {
         const error = new ZodError([]);
         const parsedArgs = await me._def.args.parseAsync(args, params).catch((e) => {
           error.addIssue(makeArgsIssue(args, e));
@@ -5671,7 +5832,7 @@ var ZodFunction = class _ZodFunction extends ZodType {
       });
     } else {
       const me = this;
-      return OK(function(...args) {
+      return OK(function (...args) {
         const parsedArgs = me._def.args.safeParse(args, params);
         if (!parsedArgs.success) {
           throw new ZodError([makeArgsIssue(args, parsedArgs.error)]);
@@ -6300,7 +6461,7 @@ var late = {
   object: ZodObject.lazycreate
 };
 var ZodFirstPartyTypeKind;
-(function(ZodFirstPartyTypeKind2) {
+(function (ZodFirstPartyTypeKind2) {
   ZodFirstPartyTypeKind2["ZodString"] = "ZodString";
   ZodFirstPartyTypeKind2["ZodNumber"] = "ZodNumber";
   ZodFirstPartyTypeKind2["ZodNaN"] = "ZodNaN";
@@ -7472,13 +7633,13 @@ var View = class {
 function isView(view) {
   return typeof view === "object" && view !== null && IsDrizzleView in view;
 }
-Column.prototype.getSQL = function() {
+Column.prototype.getSQL = function () {
   return new SQL([this]);
 };
-Table.prototype.getSQL = function() {
+Table.prototype.getSQL = function () {
   return new SQL([this]);
 };
-Subquery.prototype.getSQL = function() {
+Subquery.prototype.getSQL = function () {
   return new SQL([this]);
 };
 
@@ -9254,6 +9415,14 @@ var rumorStatusEnum = pgEnum("rumor_status", [
   "debunked",
   "inconclusive"
 ]);
+var backupCodes = pgTable("backup_codes", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  codeHash: text("code_hash").notNull(),
+  used: boolean("used").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  usedAt: timestamp("used_at")
+});
 var rumors = pgTable("rumors", {
   id: serial("id").primaryKey(),
   content: text("content").notNull(),
@@ -9772,7 +9941,11 @@ function setupMockAuth(app2) {
       resave: false,
       saveUninitialized: false,
       // Don't auto-create sessions
-      cookie: { secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 7 * 24 * 60 * 60 * 1e3 }
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1e3
+      }
       // 7 days
     })
   );
@@ -9789,7 +9962,51 @@ function setupMockAuth(app2) {
 }
 async function registerRoutes(httpServer2, app2) {
   setupMockAuth(app2);
-  app2.use("/api", rateLimit);
+  // app2.use("/api", rateLimit);
+  app2.get("/api/cron/resolve-rumors", async (req, res) => {
+    const authHeader = req.headers.authorization;
+    const secret = process.env.CRON_SECRET;
+    if (secret && authHeader !== `Bearer ${secret}`) {
+      return res.status(401).json({ ok: false, error: "Unauthorized" });
+    }
+    try {
+      const result = await storage.checkAndResolveRumors();
+      return res.json({
+        ok: true,
+        resolved: result.resolved,
+        rumors: result.rumors
+      });
+    } catch (err) {
+      console.error("[Cron] resolve-rumors error:", err);
+      return res.status(500).json({
+        ok: false,
+        error: err instanceof Error ? err.message : "Resolution failed"
+      });
+    }
+  });
+  app2.post("/api/webhooks/cloudinary-moderation", async (req, res) => {
+    try {
+      const body = req.body;
+      if (body?.notification_type !== "moderation") {
+        return res.status(200).json({ received: true });
+      }
+      const rejected = body.moderation_status === "rejected" || body.moderation?.some((m) => m.status === "rejected");
+      if (!rejected) return res.status(200).json({ received: true });
+      const secureUrl = body.secure_url ?? body.url;
+      if (!secureUrl || typeof secureUrl !== "string") {
+        return res.status(200).json({ received: true });
+      }
+      const result = await storage.clearImageByModerationRejection(secureUrl);
+      return res.status(200).json({
+        received: true,
+        rumorsUpdated: result.rumorsUpdated,
+        evidenceUpdated: result.evidenceUpdated
+      });
+    } catch (err) {
+      console.error("[Webhook] cloudinary-moderation error:", err);
+      return res.status(500).json({ received: false, error: "Internal error" });
+    }
+  });
   app2.use("/api/demo", demoRouter);
   app2.post("/api/auth/request-otp", async (req, res) => {
     try {
@@ -9800,7 +10017,10 @@ async function registerRoutes(httpServer2, app2) {
       const { requestOTP: requestOTP2 } = await Promise.resolve().then(() => (init_auth(), auth_exports));
       const result = await requestOTP2(email);
       if (!result.success) {
-        return res.status(400).json({ message: result.message, alreadyRegistered: result.alreadyRegistered });
+        return res.status(400).json({
+          message: result.message,
+          alreadyRegistered: result.alreadyRegistered
+        });
       }
       res.json({ message: result.message });
     } catch (error) {
@@ -9873,7 +10093,9 @@ async function registerRoutes(httpServer2, app2) {
     });
   });
   app2.post("/api/auth/set-user-id", (req, res) => {
-    console.warn("[Auth] DEPRECATED: /api/auth/set-user-id called. Use /api/auth/login instead.");
+    console.warn(
+      "[Auth] DEPRECATED: /api/auth/set-user-id called. Use /api/auth/login instead."
+    );
     return res.status(403).json({
       error: "This authentication method is deprecated. Please register at /register or login at /login",
       redirectTo: "/login"
@@ -9884,6 +10106,55 @@ async function registerRoutes(httpServer2, app2) {
       res.json({ authenticated: true, userId: req.session.userId });
     } else {
       res.json({ authenticated: false });
+    }
+  });
+  app2.post("/api/auth/verify-backup-code", async (req, res) => {
+    try {
+      const { userId, backupCode } = req.body;
+      if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      if (!backupCode || typeof backupCode !== "string") {
+        return res.status(400).json({ message: "Backup code is required" });
+      }
+      const { verifyBackupCode: verifyBackupCode2 } = await Promise.resolve().then(() => (init_auth(), auth_exports));
+      const result = await verifyBackupCode2(userId, backupCode);
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+      res.json({ message: result.message, userId: result.userId });
+    } catch (error) {
+      console.error("Error verifying backup code:", error);
+      res.status(500).json({ message: "An error occurred" });
+    }
+  });
+  app2.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { userId, backupCode, newPassword } = req.body;
+      if (!userId || typeof userId !== "string") {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      if (!backupCode || typeof backupCode !== "string") {
+        return res.status(400).json({ message: "Backup code is required" });
+      }
+      if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+        return res.status(400).json({
+          message: "Password must be at least 8 characters"
+        });
+      }
+      const { resetPasswordWithBackupCode: resetPasswordWithBackupCode2 } = await Promise.resolve().then(() => (init_auth(), auth_exports));
+      const result = await resetPasswordWithBackupCode2(
+        userId,
+        backupCode,
+        newPassword
+      );
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+      res.json({ message: result.message });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "An error occurred" });
     }
   });
   app2.get(api.rumors.list.path, async (req, res) => {

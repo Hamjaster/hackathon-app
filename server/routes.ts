@@ -61,6 +61,63 @@ export async function registerRoutes(
     // Apply rate limiting to all API routes
     app.use("/api", rateLimit);
 
+    // Cron: internal endpoint for Vercel Cron (runs checkAndResolveRumors every 4h)
+    app.get("/api/cron/resolve-rumors", async (req, res) => {
+        const authHeader = req.headers.authorization;
+        const secret = process.env.CRON_SECRET;
+        if (secret && authHeader !== `Bearer ${secret}`) {
+            return res.status(401).json({ ok: false, error: "Unauthorized" });
+        }
+        try {
+            const result = await storage.checkAndResolveRumors();
+            return res.json({
+                ok: true,
+                resolved: result.resolved,
+                rumors: result.rumors,
+            });
+        } catch (err) {
+            console.error("[Cron] resolve-rumors error:", err);
+            return res.status(500).json({
+                ok: false,
+                error: err instanceof Error ? err.message : "Resolution failed",
+            });
+        }
+    });
+
+    // Webhook: Cloudinary moderation (WebPurify) — clear image when rejected
+    app.post("/api/webhooks/cloudinary-moderation", async (req, res) => {
+        try {
+            const body = req.body as {
+                notification_type?: string;
+                moderation_status?: string;
+                moderation?: Array<{ kind?: string; status?: string }>;
+                secure_url?: string;
+                url?: string;
+            };
+            if (body?.notification_type !== "moderation") {
+                return res.status(200).json({ received: true });
+            }
+            const rejected =
+                body.moderation_status === "rejected" ||
+                body.moderation?.some((m) => m.status === "rejected");
+            if (!rejected) return res.status(200).json({ received: true });
+
+            const secureUrl = body.secure_url ?? body.url;
+            if (!secureUrl || typeof secureUrl !== "string") {
+                return res.status(200).json({ received: true });
+            }
+            const result = await storage.clearImageByModerationRejection(secureUrl);
+            return res.status(200).json({
+                received: true,
+                rumorsUpdated: result.rumorsUpdated,
+                evidenceUpdated: result.evidenceUpdated,
+            });
+        } catch (err) {
+            console.error("[Webhook] cloudinary-moderation error:", err);
+            return res.status(500).json({ received: false, error: "Internal error" });
+        }
+    });
+
     // Demo/Testing endpoints for time-based resolution
     // ⚠️ Remove in production!
     app.use("/api/demo", demoRouter);

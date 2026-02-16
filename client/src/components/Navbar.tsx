@@ -1,9 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { DepartmentBadge } from "@/components/DepartmentBadge";
+import { StakeGuideDialog } from "@/components/StakeGuideDialog";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Link, useLocation } from "react-router-dom";
-import { LogOut, Terminal } from "lucide-react";
+import { LogOut, Terminal, Info } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export function Navbar() {
     const { user, isLoading, logout } = useAuth();
     const location = useLocation();
+    const [rulesOpen, setRulesOpen] = useState(false);
 
     // Show loading skeleton while auth status is being determined
     if (isLoading) {
@@ -56,6 +59,22 @@ export function Navbar() {
                         >
                             Feed
                         </Link>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setRulesOpen(true)}
+                                    aria-label="How it works and rules"
+                                >
+                                    <Info className="h-5 w-5" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                                How it works & rules
+                            </TooltipContent>
+                        </Tooltip>
                     </nav>
                 </div>
 
@@ -124,6 +143,11 @@ export function Navbar() {
                     </Button>
                 </div>
             </div>
+            <StakeGuideDialog
+                open={rulesOpen}
+                onOpenChange={setRulesOpen}
+                isOnboarding={false}
+            />
         </header>
     );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Clock, AlertCircle, CheckCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -20,6 +20,7 @@ export function CountdownTimer({
     const [urgency, setUrgency] = useState<"safe" | "warning" | "danger">(
         "safe",
     );
+    const hasCalledOnExpireRef = useRef(false);
 
     useEffect(() => {
         if (!targetDate || status !== "Active") {
@@ -27,7 +28,7 @@ export function CountdownTimer({
             return;
         }
 
-        const calculateTimeLeft = () => {
+        const calculateTimeLeft = (isInitialRun: boolean) => {
             const now = new Date().getTime();
             const target = new Date(targetDate).getTime();
             const diff = target - now;
@@ -35,7 +36,10 @@ export function CountdownTimer({
             if (diff <= 0) {
                 setIsExpired(true);
                 setTimeLeft("Expired");
-                if (onExpire) onExpire();
+                if (onExpire && !isInitialRun && !hasCalledOnExpireRef.current) {
+                    hasCalledOnExpireRef.current = true;
+                    onExpire();
+                }
                 return;
             }
 
@@ -60,8 +64,8 @@ export function CountdownTimer({
             }
         };
 
-        calculateTimeLeft();
-        const interval = setInterval(calculateTimeLeft, 60000); // Update every minute
+        calculateTimeLeft(true);
+        const interval = setInterval(() => calculateTimeLeft(false), 60000); // Update every minute
 
         return () => clearInterval(interval);
     }, [targetDate, status, onExpire]);

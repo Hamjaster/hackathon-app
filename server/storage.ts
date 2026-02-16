@@ -80,6 +80,8 @@ export interface IStorage {
             votersUpdated: number;
         }>;
     }>;
+    /** Clear image from rumors/evidence when moderation rejects (e.g. WebPurify). Returns counts cleared. */
+    clearImageByModerationRejection(secureUrl: string): Promise<{ rumorsUpdated: number; evidenceUpdated: number }>;
 
     // Rumor Relationships (DAG)
     createRumorRelationship(data: {
@@ -249,17 +251,17 @@ export class DatabaseStorage implements IStorage {
 
         // 💾 Save rumor with AI analysis results
         const insertData: Record<string, any> = {
-                content,
-                image_url: imageUrl || null,
-                // AI analysis fields
-                ai_summary: aiAnalysis.summary,
-                summary: aiAnalysis.summary, // Backward compatibility
-                is_time_bound: aiAnalysis.isTimeBound,
-                expiry_date: aiAnalysis.expiryDate,
-                censored_content: aiAnalysis.censoredContent,
-                has_harmful_content: aiAnalysis.hasHarmfulContent,
-                ai_confidence: aiAnalysis.analysisMetadata.confidence,
-                ai_processed_at: new Date().toISOString(),
+            content,
+            image_url: imageUrl || null,
+            // AI analysis fields
+            ai_summary: aiAnalysis.summary,
+            summary: aiAnalysis.summary, // Backward compatibility
+            is_time_bound: aiAnalysis.isTimeBound,
+            expiry_date: aiAnalysis.expiryDate,
+            censored_content: aiAnalysis.censoredContent,
+            has_harmful_content: aiAnalysis.hasHarmfulContent,
+            ai_confidence: aiAnalysis.analysisMetadata.confidence,
+            ai_processed_at: new Date().toISOString(),
         };
 
         // Add poster department if available (column may not exist yet)
@@ -303,12 +305,12 @@ export class DatabaseStorage implements IStorage {
         creatorDepartment?: string | null;
     }): Promise<Evidence> {
         const insertData: Record<string, any> = {
-                rumor_id: data.rumorId,
-                evidence_type: data.evidenceType,
-                content_type: data.contentType,
-                content_url: data.contentUrl || null,
-                content_text: data.contentText || null,
-                creator_hash: data.creatorHash,
+            rumor_id: data.rumorId,
+            evidence_type: data.evidenceType,
+            content_type: data.contentType,
+            content_url: data.contentUrl || null,
+            content_text: data.contentText || null,
+            creator_hash: data.creatorHash,
         };
 
         if (data.creatorDepartment) {
@@ -1427,6 +1429,35 @@ export class DatabaseStorage implements IStorage {
         }
 
         return { resolved: resolvedRumors.length, rumors: resolvedRumors };
+    }
+
+    async clearImageByModerationRejection(
+        secureUrl: string,
+    ): Promise<{ rumorsUpdated: number; evidenceUpdated: number }> {
+        const normalizedUrl = secureUrl.trim();
+        if (!normalizedUrl) return { rumorsUpdated: 0, evidenceUpdated: 0 };
+
+        const { data: rumorRows } = await supabase
+            .from("rumors")
+            .update({ image_url: null, updated_at: new Date().toISOString() })
+            .eq("image_url", normalizedUrl)
+            .select("id");
+
+        const { data: evidenceRows } = await supabase
+            .from("evidence")
+            .update({ content_url: null, content_type: "text" })
+            .eq("content_type", "image")
+            .eq("content_url", normalizedUrl)
+            .select("id");
+
+        const rumorsUpdated = rumorRows?.length ?? 0;
+        const evidenceUpdated = evidenceRows?.length ?? 0;
+        if (rumorsUpdated > 0 || evidenceUpdated > 0) {
+            console.log(
+                `[Moderation] Cleared image ${normalizedUrl.slice(0, 50)}... — rumors: ${rumorsUpdated}, evidence: ${evidenceUpdated}`,
+            );
+        }
+        return { rumorsUpdated, evidenceUpdated };
     }
 
     // Rumor Relationships (DAG) Methods

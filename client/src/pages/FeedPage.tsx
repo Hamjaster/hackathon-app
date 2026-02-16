@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRumors } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { CreateRumorDialog } from "@/components/CreateRumorDialog";
+import { StakeGuideDialog, hasSeenStakeGuide } from "@/components/StakeGuideDialog";
 import { TrustScore } from "@/components/TrustScore";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { DepartmentBadge } from "@/components/DepartmentBadge";
@@ -17,12 +18,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "react-router-dom";
-import { MessageSquare, ArrowRight, AlertTriangle, Flame, Shield } from "lucide-react";
+import { MessageSquare, ArrowRight, AlertTriangle, Shield } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 export default function FeedPage() {
     const { data: rumors, isLoading, error, refetch } = useRumors();
     const [filter, setFilter] = useState("all");
+    const [showStakeGuide, setShowStakeGuide] = useState(false);
+
+    useEffect(() => {
+        if (!hasSeenStakeGuide()) setShowStakeGuide(true);
+    }, []);
 
     if (isLoading) return <FeedSkeleton />;
     if (error)
@@ -49,8 +55,13 @@ export default function FeedPage() {
     return (
         <div className="min-h-screen bg-background">
             <Navbar />
+            <StakeGuideDialog
+                open={showStakeGuide}
+                onOpenChange={setShowStakeGuide}
+                isOnboarding
+            />
 
-            <main className="container max-w-4xl py-8 px-4 mx-auto">
+            <main className="container max-w-6xl py-8 px-4 mx-auto">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -86,9 +97,9 @@ export default function FeedPage() {
                         </TabsTrigger>
                     </TabsList>
 
-                    <div className="grid gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                         {filteredRumors?.length === 0 ? (
-                            <div className="text-center py-20 border border-dashed border-border rounded-xl">
+                            <div className="col-span-full text-center py-20 border border-dashed border-border rounded-xl">
                                 <p className="text-muted-foreground">
                                     No rumors found in this category.
                                 </p>
@@ -98,18 +109,18 @@ export default function FeedPage() {
                                 <Link
                                     key={rumor.id}
                                     to={`/rumor/${rumor.id}`}
-                                    className="block group"
+                                    className="block group h-full"
                                 >
-                                    <Card className="border-border/60 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 cursor-pointer bg-card/50 backdrop-blur-sm overflow-hidden relative">
+                                    <Card className="h-full flex flex-col border-border/60 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 cursor-pointer bg-card/50 backdrop-blur-sm overflow-hidden relative">
                                         {/* Status accent line on left */}
                                         <div
                                             className={`absolute left-0 top-0 bottom-0 w-1 ${(rumor as any).trust_score >=
-                                                    0.8
-                                                    ? "bg-[hsl(var(--status-verified))]"
-                                                    : (rumor as any)
-                                                        .trust_score <= 0.2
-                                                        ? "bg-destructive"
-                                                        : "bg-yellow-500"
+                                                0.8
+                                                ? "bg-[hsl(var(--status-verified))]"
+                                                : (rumor as any)
+                                                    .trust_score <= 0.2
+                                                    ? "bg-destructive"
+                                                    : "bg-yellow-500"
                                                 }`}
                                         />
 
@@ -219,7 +230,7 @@ export default function FeedPage() {
                                             </div>
                                         )}
 
-                                        <CardContent className="pb-4 pl-6">
+                                        <CardContent className="pb-4 pl-6 flex-1">
                                             <TrustScore
                                                 score={
                                                     (rumor as any).trust_score
@@ -258,7 +269,7 @@ function FeedSkeleton() {
     return (
         <div className="min-h-screen bg-background">
             <Navbar />
-            <div className="container max-w-4xl py-8 px-4 mx-auto space-y-8">
+            <div className="container max-w-6xl py-8 px-4 mx-auto space-y-8">
                 <div className="flex justify-between items-center">
                     <div className="space-y-2">
                         <Skeleton className="h-8 w-48" />
@@ -266,9 +277,9 @@ function FeedSkeleton() {
                     </div>
                     <Skeleton className="h-10 w-32" />
                 </div>
-                <div className="space-y-4">
-                    {[1, 2, 3].map((i) => (
-                        <Skeleton key={i} className="h-40 w-full rounded-xl" />
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <Skeleton key={i} className="h-52 w-full rounded-xl" />
                     ))}
                 </div>
             </div>
