@@ -1,4 +1,4 @@
-import { supabase, type Rumor, type Evidence, type AuditLog } from "./supabase";
+import { supabase, type Rumor, type Evidence, type AuditLog } from "./supabase.js";
 import { createHash } from "crypto";
 
 type RumorStatus = "Active" | "Verified" | "Debunked" | "Inconclusive";
@@ -58,7 +58,7 @@ export interface IStorage {
     }>;
 
     // User Management
-    getOrCreateUser(voteHash: string): Promise<import("./supabase").User>;
+    getOrCreateUser(voteHash: string): Promise<import("./supabase.js").User>;
     getUserStats(voteHash: string): Promise<{
         reputation: number;
         totalPoints: number;
@@ -218,7 +218,7 @@ export class DatabaseStorage implements IStorage {
         console.log("[Storage] Creating rumor with AI analysis...");
 
         // 🤖 Run AI analysis synchronously BEFORE saving
-        const { analyzeRumor } = await import("./ai/analyzer");
+        const { analyzeRumor } = await import("./ai/analyzer.js");
         const createdAt = new Date().toISOString();
 
         let aiAnalysis;
@@ -916,7 +916,7 @@ export class DatabaseStorage implements IStorage {
 
     async getOrCreateUser(
         voteHash: string,
-    ): Promise<import("./supabase").User> {
+    ): Promise<import("./supabase.js").User> {
         // Try to get existing user
         const { data: existing } = await supabase
             .from("users")
