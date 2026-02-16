@@ -55,6 +55,11 @@ export async function registerRoutes(
     httpServer: Server,
     app: Express,
 ): Promise<Server> {
+    // Health check: GET / to verify backend is running
+    app.get("/", (_req, res) => {
+        res.json({ ok: true, message: "Backend is running" });
+    });
+
     // Mock Auth Setup for local development
     setupMockAuth(app);
 
