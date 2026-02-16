@@ -1,12 +1,12 @@
 import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { api } from "./shared/routes";
+import { storage } from "./storage.js";
+import { api } from "./shared/routes.js";
 import { z } from "zod";
-import { rateLimit } from "./middleware/rateLimit";
+import { rateLimit } from "./middleware/rateLimit.js";
 import session from "express-session";
 import { randomUUID, createHash } from "crypto";
-import { demoRouter } from "./demo-resolution";
+import { demoRouter } from "./demo-resolution.js";
 
 // User ID authentication for local development
 function setupMockAuth(app: Express) {
@@ -136,7 +136,7 @@ export async function registerRoutes(
                 return res.status(400).json({ message: "Email is required" });
             }
 
-            const { requestOTP } = await import("./auth");
+            const { requestOTP } = await import("./auth.js");
             const result = await requestOTP(email);
 
             if (!result.success) {
@@ -165,7 +165,7 @@ export async function registerRoutes(
                     .json({ message: "Email and OTP are required" });
             }
 
-            const { verifyOTPAndRegister } = await import("./auth");
+            const { verifyOTPAndRegister } = await import("./auth.js");
             const result = await verifyOTPAndRegister(email, otp);
 
             if (!result.success) {
@@ -207,7 +207,7 @@ export async function registerRoutes(
                     .json({ message: "User ID and password are required" });
             }
 
-            const { login } = await import("./auth");
+            const { login } = await import("./auth.js");
             const result = await login(userId, password);
 
             if (!result.success) {
@@ -281,7 +281,7 @@ export async function registerRoutes(
                     .json({ message: "Backup code is required" });
             }
 
-            const { verifyBackupCode } = await import("./auth");
+            const { verifyBackupCode } = await import("./auth.js");
             const result = await verifyBackupCode(userId, backupCode);
 
             if (!result.success) {
@@ -321,7 +321,7 @@ export async function registerRoutes(
                     });
             }
 
-            const { resetPasswordWithBackupCode } = await import("./auth");
+            const { resetPasswordWithBackupCode } = await import("./auth.js");
             const result = await resetPasswordWithBackupCode(
                 userId,
                 backupCode,
