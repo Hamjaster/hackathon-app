@@ -94,8 +94,11 @@ export function AddEvidenceDialog({ rumorId, disabled = false, disabledReason }:
                 setIsUploading(true);
                 try {
                     imageUrl = await uploadImage(imageFile);
-                } catch {
-                    toast({ title: "Image upload failed", description: "Submitting without image.", variant: "destructive" });
+                } catch (err: any) {
+                    const msg = err?.message || "Image upload failed";
+                    toast({ title: "Image upload failed", description: msg, variant: "destructive" });
+                    setIsUploading(false);
+                    return; // Don't submit if moderation rejected the image
                 }
                 setIsUploading(false);
             }

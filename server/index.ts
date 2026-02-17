@@ -10,8 +10,8 @@ const httpServer = createServer(app);
 const port = parseInt(process.env.PORT || "5000", 10);
 
 app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
 (async () => {
   await registerRoutes(httpServer, app);

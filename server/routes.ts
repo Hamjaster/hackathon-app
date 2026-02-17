@@ -7,6 +7,7 @@ import { rateLimit } from "./middleware/rateLimit.js";
 import session from "express-session";
 import { randomUUID, createHash } from "crypto";
 import { demoRouter } from "./demo-resolution.js";
+import { v2 as cloudinary } from "cloudinary";
 
 // User ID authentication for local development
 function setupMockAuth(app: Express) {
@@ -126,6 +127,73 @@ export async function registerRoutes(
     // Demo/Testing endpoints for time-based resolution
     // ⚠️ Remove in production!
     app.use("/api/demo", demoRouter);
+
+    // ─── Server-side Cloudinary upload with WebPurify moderation ───
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    app.post("/api/upload/image", async (req: any, res) => {
+        try {
+            // Authentication check
+            if (!req.isAuthenticated || !req.isAuthenticated()) {
+                return res.status(401).json({ message: "Authentication required" });
+            }
+
+            const { image } = req.body;
+            if (!image || typeof image !== "string") {
+                return res.status(400).json({ message: "Missing 'image' field (base64 data URI expected)" });
+            }
+
+            // Validate it looks like a data URI image
+            if (!image.startsWith("data:image/")) {
+                return res.status(400).json({ message: "Invalid image format. Must be a base64 data URI." });
+            }
+
+            // Upload to Cloudinary with WebPurify moderation
+            const uploadResult = await cloudinary.uploader.upload(image, {
+                moderation: "webpurify",
+                folder: "campustrust",
+                resource_type: "image",
+            });
+
+            // Check immediate moderation status
+            const moderationResult = uploadResult.moderation;
+            const isRejected = moderationResult?.some(
+                (m: any) => m.status === "rejected"
+            );
+
+            if (isRejected) {
+                // Delete the rejected image from Cloudinary
+                try {
+                    await cloudinary.uploader.destroy(uploadResult.public_id);
+                } catch (e) {
+                    console.error("[Upload] Failed to delete rejected image:", e);
+                }
+                return res.status(422).json({
+                    message: "Image was rejected by content moderation. Please upload an appropriate image.",
+                    moderation_status: "rejected",
+                });
+            }
+
+            // Image approved or pending async review
+            const isPending = moderationResult?.some(
+                (m: any) => m.status === "pending"
+            );
+
+            return res.json({
+                secure_url: uploadResult.secure_url,
+                public_id: uploadResult.public_id,
+                moderation_status: isPending ? "pending" : "approved",
+            });
+        } catch (err: any) {
+            console.error("[Upload] Cloudinary upload error:", err);
+            const message = err?.message || "Image upload failed";
+            return res.status(500).json({ message });
+        }
+    });
 
     // Anonymous Authentication Endpoints
     app.post("/api/auth/request-otp", async (req, res) => {
