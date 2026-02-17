@@ -71,8 +71,11 @@ export function CreateRumorDialog() {
           setIsUploading(true);
           try {
             imageUrl = await uploadImage(imageFile);
-          } catch {
-            toast({ title: "Image upload failed", description: "Rumor will be submitted without the image.", variant: "destructive" });
+          } catch (err: any) {
+            const msg = err?.message || "Image upload failed";
+            toast({ title: "Image upload failed", description: msg, variant: "destructive" });
+            setIsUploading(false);
+            return; // Don't submit if moderation rejected the image
           }
           setIsUploading(false);
         } else {
