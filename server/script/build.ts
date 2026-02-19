@@ -24,6 +24,7 @@ async function buildServer() {
       "memorystore",
       "bcryptjs",
       "nodemailer",
+      "jsonwebtoken",
     ],
     loader: {
       ".node": "copy",

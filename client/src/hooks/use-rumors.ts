@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@/shared/routes";
 import { useToast } from "@/hooks/use-toast";
 import { InsertRumor, InsertEvidence } from "@/shared/schema";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 import { z } from "zod";
 
 // Types derived from the API definition
@@ -14,7 +14,7 @@ export function useRumors() {
         queryKey: [api.rumors.list.path],
         queryFn: async () => {
             const res = await fetch(apiUrl(api.rumors.list.path), {
-                credentials: "include",
+                headers: getAuthHeaders(),
             });
             if (!res.ok) throw new Error("Failed to fetch rumors");
             return api.rumors.list.responses[200].parse(await res.json());
@@ -27,7 +27,7 @@ export function useRumor(id: string) {
         queryKey: [api.rumors.get.path, id],
         queryFn: async () => {
             const url = apiUrl(buildUrl(api.rumors.get.path, { id }));
-            const res = await fetch(url, { credentials: "include" });
+            const res = await fetch(url, { headers: getAuthHeaders() });
             if (res.status === 404) return null;
             if (!res.ok) throw new Error("Failed to fetch rumor");
             return api.rumors.get.responses[200].parse(await res.json());
@@ -44,9 +44,8 @@ export function useCreateRumor() {
         mutationFn: async (data: InsertRumor) => {
             const res = await fetch(apiUrl(api.rumors.create.path), {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify(data),
-                credentials: "include",
             });
 
             if (!res.ok) {
@@ -91,9 +90,8 @@ export function useCreateEvidence() {
             const url = apiUrl(buildUrl(api.evidence.create.path, { id: rumorId }));
             const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ ...data, imageUrl }),
-                credentials: "include",
             });
 
             if (!res.ok) {
@@ -141,9 +139,8 @@ export function useVoteEvidence() {
             const url = apiUrl(buildUrl(api.evidence.vote.path, { id: evidenceId }));
             const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ isHelpful, stakeAmount }),
-                credentials: "include",
             });
 
             if (!res.ok) {

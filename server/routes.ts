@@ -4,38 +4,10 @@ import { storage } from "./storage.js";
 import { api } from "./shared/routes.js";
 import { z } from "zod";
 import { rateLimit } from "./middleware/rateLimit.js";
-import session from "express-session";
+import { jwtAuth, signToken } from "./jwt.js";
 import { randomUUID, createHash } from "crypto";
 import { demoRouter } from "./demo-resolution.js";
 import { v2 as cloudinary } from "cloudinary";
-
-// User ID authentication for local development
-function setupMockAuth(app: Express) {
-    app.use(
-        session({
-            secret: process.env.SESSION_SECRET || "hackathon-dev-secret-2026",
-            resave: false,
-            saveUninitialized: false, // Don't auto-create sessions
-            cookie: {
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "lax",
-                maxAge: 7 * 24 * 60 * 60 * 1000,
-            }, // 7 days
-        }),
-    );
-
-    app.use((req: any, res, next) => {
-        // Only set user if userId exists in session
-        if (req.session.userId) {
-            req.user = { id: req.session.userId };
-            req.isAuthenticated = () => true;
-        } else {
-            req.user = null;
-            req.isAuthenticated = () => false;
-        }
-        next();
-    });
-}
 
 declare global {
     namespace Express {
@@ -43,12 +15,6 @@ declare global {
             isAuthenticated(): boolean;
             user?: { id: string };
         }
-    }
-}
-
-declare module "express-session" {
-    interface SessionData {
-        userId?: string;
     }
 }
 
@@ -61,8 +27,8 @@ export async function registerRoutes(
         res.json({ ok: true, message: "Backend is running" });
     });
 
-    // Mock Auth Setup for local development
-    setupMockAuth(app);
+    // JWT auth: parse Authorization Bearer token and set req.user (serverless-friendly)
+    app.use(jwtAuth);
 
     // Apply rate limiting to all API routes
     app.use("/api", rateLimit);
@@ -243,21 +209,12 @@ export async function registerRoutes(
                 });
             }
 
-            // Set session
-            req.session.userId = result.userId!;
-            req.session.save((err) => {
-                if (err) {
-                    console.error("Session save error:", err);
-                    return res
-                        .status(500)
-                        .json({ message: "Failed to create session" });
-                }
-
-                res.json({
-                    message: result.message,
-                    userId: result.userId,
-                    password: result.password,
-                });
+            const token = signToken(result.userId!);
+            res.json({
+                message: result.message,
+                userId: result.userId,
+                password: result.password,
+                token,
             });
         } catch (error) {
             console.error("[API] Error verifying OTP:", error);
@@ -281,33 +238,20 @@ export async function registerRoutes(
             if (!result.success) {
                 return res.status(401).json({ message: result.message });
             }
+            if (!result.userId) {
+                return res.status(500).json({ message: "Login succeeded but no user id returned" });
+            }
 
-            // Set session
-            req.session.userId = result.userId!;
-            req.session.save((err) => {
-                if (err) {
-                    console.error("Session save error:", err);
-                    return res
-                        .status(500)
-                        .json({ message: "Failed to create session" });
-                }
-
-                res.json({ message: result.message, userId: result.userId });
-            });
+            const token = signToken(result.userId);
+            res.json({ message: result.message, userId: result.userId, token });
         } catch (error) {
             console.error("[API] Error logging in:", error);
             res.status(500).json({ message: "Failed to login" });
         }
     });
 
-    app.post("/api/auth/logout", (req, res) => {
-        req.session.destroy((err) => {
-            if (err) {
-                console.error("Session destroy error:", err);
-                return res.status(500).json({ message: "Failed to logout" });
-            }
-            res.json({ message: "Logged out successfully" });
-        });
+    app.post("/api/auth/logout", (_req, res) => {
+        res.json({ message: "Logged out successfully" });
     });
 
     // Legacy authentication endpoint - DEPRECATED
@@ -326,9 +270,8 @@ export async function registerRoutes(
     });
 
     app.get("/api/auth/status", (req, res) => {
-        // Check if user has a valid session with userId
-        if (req.session.userId) {
-            res.json({ authenticated: true, userId: req.session.userId });
+        if (req.isAuthenticated() && req.user?.id) {
+            res.json({ authenticated: true, userId: req.user.id });
         } else {
             res.json({ authenticated: false });
         }
@@ -649,10 +592,8 @@ export async function registerRoutes(
         }
     });
 
-    app.get("/api/logout", (req: any, res) => {
-        req.session.destroy(() => {
-            res.redirect("/");
-        });
+    app.get("/api/logout", (_req, res) => {
+        res.redirect("/");
     });
 
     return httpServer;

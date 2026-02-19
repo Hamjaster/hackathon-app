@@ -22,7 +22,7 @@ import {
     Copy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, setAuthToken } from "@/lib/api";
 import BackupCodesDisplay from "@/components/BackupCodesDisplay";
 
 export default function RegisterPage() {
@@ -39,6 +39,7 @@ export default function RegisterPage() {
         userId: string;
         password: string;
         backupCodes: string[];
+        token?: string;
     } | null>(null);
 
     const handleRequestOTP = async () => {
@@ -98,6 +99,7 @@ export default function RegisterPage() {
                 userId: data.userId,
                 password: data.password,
                 backupCodes: data.backupCodes || [],
+                token: data.token,
             });
             setStep("credentials");
 
@@ -122,6 +124,7 @@ export default function RegisterPage() {
 
     const handleContinue = async () => {
         if (credentials) {
+            if (credentials.token) setAuthToken(credentials.token);
             localStorage.setItem("userId", credentials.userId);
 
             // Immediately sync auth cache so protected routing sees logged-in state
@@ -135,7 +138,7 @@ export default function RegisterPage() {
                 updatedAt: null,
             });
         }
-        await queryClient.invalidateQueries({ queryKey: ["/api/auth/status"] });
+        queryClient.invalidateQueries({ queryKey: ["auth"] });
         navigate("/", { replace: true });
     };
 

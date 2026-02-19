@@ -14,7 +14,7 @@ import { ShieldCheck, ShieldAlert, Coins, TrendingUp } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/routes";
 import { useToast } from "@/hooks/use-toast";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 
 interface VoteOnRumorDialogProps {
     rumorId: string;
@@ -33,7 +33,7 @@ export function VoteOnRumorDialog({ rumorId, voteType, disabled = false, disable
         queryKey: [api.user.stats.path],
         queryFn: async () => {
             const res = await fetch(apiUrl(api.user.stats.path), {
-                credentials: "include",
+                headers: getAuthHeaders(),
             });
             if (!res.ok) return null;
             return api.user.stats.responses[200].parse(await res.json());
@@ -45,9 +45,8 @@ export function VoteOnRumorDialog({ rumorId, voteType, disabled = false, disable
             const url = apiUrl(`/api/rumors/${rumorId}/vote`);
             const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({ voteType, stakeAmount }),
-                credentials: "include",
             });
 
             if (!res.ok) {

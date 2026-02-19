@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, User, Lock, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, setAuthToken } from "@/lib/api";
 import PasswordRecoveryDialog from "@/components/PasswordRecoveryDialog";
 
 export default function LoginPage() {
@@ -54,7 +54,7 @@ export default function LoginPage() {
                 description: `Welcome back, ${data.userId}`,
             });
 
-            // Store userId in localStorage
+            if (data.token) setAuthToken(data.token);
             localStorage.setItem("userId", data.userId);
 
             // Immediately sync auth cache so protected routing sees logged-in state

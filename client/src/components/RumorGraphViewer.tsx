@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl } from "@/shared/routes";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, getAuthHeaders } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +47,7 @@ export function RumorGraphViewer({ rumorId }: RumorGraphViewerProps) {
         queryKey: [`/api/rumors/${rumorId}/graph`],
         queryFn: async () => {
             const url = apiUrl(buildUrl(api.relationships.graph.path, { id: rumorId }));
-            const res = await fetch(url, { credentials: "include" });
+            const res = await fetch(url, { headers: getAuthHeaders() });
             if (!res.ok) throw new Error("Failed to fetch graph");
             return api.relationships.graph.responses[200].parse(
                 await res.json(),
@@ -59,7 +59,7 @@ export function RumorGraphViewer({ rumorId }: RumorGraphViewerProps) {
         queryKey: [`/api/rumors/${rumorId}/relationships`],
         queryFn: async () => {
             const url = buildUrl(api.relationships.list.path, { id: rumorId });
-            const res = await fetch(url, { credentials: "include" });
+            const res = await fetch(apiUrl(url), { headers: getAuthHeaders() });
             if (!res.ok) throw new Error("Failed to fetch relationships");
             return api.relationships.list.responses[200].parse(
                 await res.json(),
@@ -74,12 +74,11 @@ export function RumorGraphViewer({ rumorId }: RumorGraphViewerProps) {
             }));
             const res = await fetch(url, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", ...getAuthHeaders() },
                 body: JSON.stringify({
                     targetRumorId: targetRumorId,
                     relationshipType,
                 }),
-                credentials: "include",
             });
 
             if (!res.ok) {
@@ -294,8 +293,8 @@ export function RumorGraphViewer({ rumorId }: RumorGraphViewerProps) {
                                         <div
                                             key={node.id}
                                             className={`p-3 rounded border ${isCurrentRumor
-                                                    ? "bg-primary/10 border-primary/40"
-                                                    : "bg-background/50 border-border/30"
+                                                ? "bg-primary/10 border-primary/40"
+                                                : "bg-background/50 border-border/30"
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-2">

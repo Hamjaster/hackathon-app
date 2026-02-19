@@ -459,7 +459,7 @@ var require_cli_options = __commonJS({
   "node_modules/dotenv/lib/cli-options.js"(exports2, module2) {
     var re = /^dotenv_config_(encoding|path|quiet|debug|override|DOTENV_KEY)=(.+)$/;
     module2.exports = function optionMatcher(args) {
-      const options = args.reduce(function (acc, cur) {
+      const options = args.reduce(function(acc, cur) {
         const matches = cur.match(re);
         if (matches) {
           acc[matches[1]] = matches[2];
@@ -501,14 +501,14 @@ var require_object_assign = __commonJS({
         for (var i = 0; i < 10; i++) {
           test2["_" + String.fromCharCode(i)] = i;
         }
-        var order2 = Object.getOwnPropertyNames(test2).map(function (n) {
+        var order2 = Object.getOwnPropertyNames(test2).map(function(n) {
           return test2[n];
         });
         if (order2.join("") !== "0123456789") {
           return false;
         }
         var test3 = {};
-        "abcdefghijklmnopqrst".split("").forEach(function (letter) {
+        "abcdefghijklmnopqrst".split("").forEach(function(letter) {
           test3[letter] = letter;
         });
         if (Object.keys(Object.assign({}, test3)).join("") !== "abcdefghijklmnopqrst") {
@@ -519,7 +519,7 @@ var require_object_assign = __commonJS({
         return false;
       }
     }
-    module2.exports = shouldUseNative() ? Object.assign : function (target, source) {
+    module2.exports = shouldUseNative() ? Object.assign : function(target, source) {
       var from;
       var to = toObject(target);
       var symbols;
@@ -620,7 +620,7 @@ var require_vary = __commonJS({
 // node_modules/cors/lib/index.js
 var require_lib = __commonJS({
   "node_modules/cors/lib/index.js"(exports2, module2) {
-    (function () {
+    (function() {
       "use strict";
       var assign = require_object_assign();
       var vary = require_vary();
@@ -786,12 +786,12 @@ var require_lib = __commonJS({
         if (typeof o === "function") {
           optionsCallback = o;
         } else {
-          optionsCallback = function (req, cb) {
+          optionsCallback = function(req, cb) {
             cb(null, o);
           };
         }
         return function corsMiddleware(req, res, next) {
-          optionsCallback(req, function (err, options) {
+          optionsCallback(req, function(err, options) {
             if (err) {
               next(err);
             } else {
@@ -800,12 +800,12 @@ var require_lib = __commonJS({
               if (corsOptions.origin && typeof corsOptions.origin === "function") {
                 originCallback = corsOptions.origin;
               } else if (corsOptions.origin) {
-                originCallback = function (origin, cb) {
+                originCallback = function(origin, cb) {
                   cb(null, corsOptions.origin);
                 };
               }
               if (originCallback) {
-                originCallback(req.headers.origin, function (err2, origin) {
+                originCallback(req.headers.origin, function(err2, origin) {
                   if (err2 || !origin) {
                     next(err2);
                   } else {
@@ -1621,7 +1621,7 @@ var init_auth = __esm({
 });
 
 // node_modules/dotenv/config.js
-(function () {
+(function() {
   require_main().config(
     Object.assign(
       {},
@@ -2624,7 +2624,7 @@ __export(external_exports, {
 
 // node_modules/zod/v3/helpers/util.js
 var util;
-(function (util2) {
+(function(util2) {
   util2.assertEqual = (_) => {
   };
   function assertIs(_arg) {
@@ -2650,7 +2650,7 @@ var util;
     return util2.objectValues(filtered);
   };
   util2.objectValues = (obj) => {
-    return util2.objectKeys(obj).map(function (e) {
+    return util2.objectKeys(obj).map(function(e) {
       return obj[e];
     });
   };
@@ -2683,7 +2683,7 @@ var util;
   };
 })(util || (util = {}));
 var objectUtil;
-(function (objectUtil2) {
+(function(objectUtil2) {
   objectUtil2.mergeShapes = (first, second) => {
     return {
       ...first,
@@ -2802,7 +2802,7 @@ var ZodError = class _ZodError extends Error {
     this.issues = issues;
   }
   format(_mapper) {
-    const mapper = _mapper || function (issue) {
+    const mapper = _mapper || function(issue) {
       return issue.message;
     };
     const fieldErrors = { _errors: [] };
@@ -3098,7 +3098,7 @@ var isAsync = (x) => typeof Promise !== "undefined" && x instanceof Promise;
 
 // node_modules/zod/v3/helpers/errorUtil.js
 var errorUtil;
-(function (errorUtil2) {
+(function(errorUtil2) {
   errorUtil2.errToObj = (message) => typeof message === "string" ? { message } : message || {};
   errorUtil2.toString = (message) => typeof message === "string" ? message : message?.message;
 })(errorUtil || (errorUtil = {}));
@@ -3497,11 +3497,11 @@ function isValidIP(ip, version2) {
   }
   return false;
 }
-function isValidJWT(jwt, alg) {
-  if (!jwtRegex.test(jwt))
+function isValidJWT(jwt2, alg) {
+  if (!jwtRegex.test(jwt2))
     return false;
   try {
-    const [header] = jwt.split(".");
+    const [header] = jwt2.split(".");
     if (!header)
       return false;
     const base64 = header.replace(/-/g, "+").replace(/_/g, "/").padEnd(header.length + (4 - header.length % 4) % 4, "=");
@@ -5817,7 +5817,7 @@ var ZodFunction = class _ZodFunction extends ZodType {
     const fn = ctx.data;
     if (this._def.returns instanceof ZodPromise) {
       const me = this;
-      return OK(async function (...args) {
+      return OK(async function(...args) {
         const error = new ZodError([]);
         const parsedArgs = await me._def.args.parseAsync(args, params).catch((e) => {
           error.addIssue(makeArgsIssue(args, e));
@@ -5832,7 +5832,7 @@ var ZodFunction = class _ZodFunction extends ZodType {
       });
     } else {
       const me = this;
-      return OK(function (...args) {
+      return OK(function(...args) {
         const parsedArgs = me._def.args.safeParse(args, params);
         if (!parsedArgs.success) {
           throw new ZodError([makeArgsIssue(args, parsedArgs.error)]);
@@ -6461,7 +6461,7 @@ var late = {
   object: ZodObject.lazycreate
 };
 var ZodFirstPartyTypeKind;
-(function (ZodFirstPartyTypeKind2) {
+(function(ZodFirstPartyTypeKind2) {
   ZodFirstPartyTypeKind2["ZodString"] = "ZodString";
   ZodFirstPartyTypeKind2["ZodNumber"] = "ZodNumber";
   ZodFirstPartyTypeKind2["ZodNaN"] = "ZodNaN";
@@ -7633,13 +7633,13 @@ var View = class {
 function isView(view) {
   return typeof view === "object" && view !== null && IsDrizzleView in view;
 }
-Column.prototype.getSQL = function () {
+Column.prototype.getSQL = function() {
   return new SQL([this]);
 };
-Table.prototype.getSQL = function () {
+Table.prototype.getSQL = function() {
   return new SQL([this]);
 };
-Subquery.prototype.getSQL = function () {
+Subquery.prototype.getSQL = function() {
   return new SQL([this]);
 };
 
@@ -9773,8 +9773,41 @@ function rateLimit(req, res, next) {
   next();
 }
 
+// jwt.ts
+var import_jsonwebtoken = __toESM(require("jsonwebtoken"), 1);
+var JWT_SECRET = process.env.JWT_SECRET || "hackathon-jwt-secret-2026";
+var JWT_EXPIRY = process.env.JWT_EXPIRY || "7d";
+function signToken(userId) {
+  return import_jsonwebtoken.default.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+}
+function verifyToken(token) {
+  try {
+    const decoded = import_jsonwebtoken.default.verify(token, JWT_SECRET);
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+function jwtAuth(req, _res, next) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (!token) {
+    req.user = null;
+    req.isAuthenticated = () => false;
+    return next();
+  }
+  const payload = verifyToken(token);
+  if (!payload?.userId) {
+    req.user = null;
+    req.isAuthenticated = () => false;
+    return next();
+  }
+  req.user = { id: payload.userId };
+  req.isAuthenticated = () => true;
+  next();
+}
+
 // routes.ts
-var import_express_session = __toESM(require("express-session"), 1);
 var import_crypto3 = require("crypto");
 
 // demo-resolution.ts
@@ -9934,35 +9967,12 @@ demoRouter.get("/resolution-candidates", async (req, res) => {
 });
 
 // routes.ts
-function setupMockAuth(app2) {
-  app2.use(
-    (0, import_express_session.default)({
-      secret: process.env.SESSION_SECRET || "hackathon-dev-secret-2026",
-      resave: false,
-      saveUninitialized: false,
-      // Don't auto-create sessions
-      cookie: {
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1e3
-      }
-      // 7 days
-    })
-  );
-  app2.use((req, res, next) => {
-    if (req.session.userId) {
-      req.user = { id: req.session.userId };
-      req.isAuthenticated = () => true;
-    } else {
-      req.user = null;
-      req.isAuthenticated = () => false;
-    }
-    next();
-  });
-}
 async function registerRoutes(httpServer2, app2) {
-  setupMockAuth(app2);
-  // app2.use("/api", rateLimit);
+  app2.get("/", (_req, res) => {
+    res.json({ ok: true, message: "Backend is running" });
+  });
+  app2.use(jwtAuth);
+  app2.use("/api", rateLimit);
   app2.get("/api/cron/resolve-rumors", async (req, res) => {
     const authHeader = req.headers.authorization;
     const secret = process.env.CRON_SECRET;
@@ -10042,17 +10052,12 @@ async function registerRoutes(httpServer2, app2) {
           alreadyRegistered: result.alreadyRegistered
         });
       }
-      req.session.userId = result.userId;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        res.json({
-          message: result.message,
-          userId: result.userId,
-          password: result.password
-        });
+      const token = signToken(result.userId);
+      res.json({
+        message: result.message,
+        userId: result.userId,
+        password: result.password,
+        token
       });
     } catch (error) {
       console.error("[API] Error verifying OTP:", error);
@@ -10070,27 +10075,15 @@ async function registerRoutes(httpServer2, app2) {
       if (!result.success) {
         return res.status(401).json({ message: result.message });
       }
-      req.session.userId = result.userId;
-      req.session.save((err) => {
-        if (err) {
-          console.error("Session save error:", err);
-          return res.status(500).json({ message: "Failed to create session" });
-        }
-        res.json({ message: result.message, userId: result.userId });
-      });
+      const token = signToken(result.userId);
+      res.json({ message: result.message, userId: result.userId, token });
     } catch (error) {
       console.error("[API] Error logging in:", error);
       res.status(500).json({ message: "Failed to login" });
     }
   });
-  app2.post("/api/auth/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        console.error("Session destroy error:", err);
-        return res.status(500).json({ message: "Failed to logout" });
-      }
-      res.json({ message: "Logged out successfully" });
-    });
+  app2.post("/api/auth/logout", (_req, res) => {
+    res.json({ message: "Logged out successfully" });
   });
   app2.post("/api/auth/set-user-id", (req, res) => {
     console.warn(
@@ -10102,8 +10095,8 @@ async function registerRoutes(httpServer2, app2) {
     });
   });
   app2.get("/api/auth/status", (req, res) => {
-    if (req.session.userId) {
-      res.json({ authenticated: true, userId: req.session.userId });
+    if (req.isAuthenticated() && req.user?.id) {
+      res.json({ authenticated: true, userId: req.user.id });
     } else {
       res.json({ authenticated: false });
     }
@@ -10347,10 +10340,8 @@ async function registerRoutes(httpServer2, app2) {
       res.status(500).json({ message: "Internal server error" });
     }
   });
-  app2.get("/api/logout", (req, res) => {
-    req.session.destroy(() => {
-      res.redirect("/");
-    });
+  app2.get("/api/logout", (_req, res) => {
+    res.redirect("/");
   });
   return httpServer2;
 }
@@ -10401,7 +10392,7 @@ seedData();
 var app = (0, import_express2.default)();
 var httpServer = (0, import_http.createServer)(app);
 var port = parseInt(process.env.PORT || "5000", 10);
-app.use((0, import_cors.default)({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173", credentials: true }));
+app.use((0, import_cors.default)({ origin: true, credentials: true }));
 app.use(import_express2.default.json());
 app.use(import_express2.default.urlencoded({ extended: false }));
 (async () => {

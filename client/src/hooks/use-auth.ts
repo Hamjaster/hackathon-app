@@ -1,69 +1,41 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { User } from "@/shared/models/auth";
-import { apiUrl } from "@/lib/api";
+import { clearAuthToken } from "@/lib/api";
 
-async function fetchUser(): Promise<User | null> {
-  const response = await fetch(apiUrl("/api/auth/status"), {
-    credentials: "include",
-  });
+const AUTH_USER_KEY = "userId";
 
-  if (response.status === 401) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error(`${response.status}: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  // If not authenticated, return null
-  if (!data.authenticated) {
-    return null;
-  }
-
-  // Return user object from userId
+function getStoredUser(): User | null {
+  const userId = localStorage.getItem(AUTH_USER_KEY);
+  if (!userId) return null;
   return {
-    id: data.userId,
+    id: userId,
     email: null,
     firstName: null,
     lastName: null,
     profileImageUrl: null,
     createdAt: null,
-    updatedAt: null
+    updatedAt: null,
   };
 }
 
-async function logout(): Promise<void> {
-  try {
-    // Call logout endpoint
-    await fetch(apiUrl("/api/auth/logout"), {
-      method: "POST",
-      credentials: "include",
-    });
-  } catch (error) {
-    console.error("Logout error:", error);
-  } finally {
-    // Clear localStorage
-    localStorage.removeItem('userId');
-    // Redirect to login page
-    window.location.href = "/login";
-  }
+function logout(): void {
+  localStorage.removeItem(AUTH_USER_KEY);
+  clearAuthToken();
+  window.location.href = "/login";
 }
 
 export function useAuth() {
   const queryClient = useQueryClient();
   const { data: user, isLoading, isFetching } = useQuery<User | null>({
-    queryKey: ["/api/auth/status"],
-    queryFn: fetchUser,
-    retry: false,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    queryKey: ["auth"],
+    queryFn: getStoredUser,
+    staleTime: 1000 * 60 * 5,
   });
 
   const logoutMutation = useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.setQueryData(["/api/auth/status"], null);
+      queryClient.setQueryData(["auth"], null);
     },
   });
 
