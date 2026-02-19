@@ -4,15 +4,15 @@
  * before accepting the image. Rejected images are blocked immediately.
  */
 
-const API_URL = import.meta.env.VITE_API_URL || "";
+import { apiUrl, getAuthHeaders } from "./api";
 
 export async function uploadImage(file: File): Promise<string> {
   // Convert file to base64 data URI for server-side upload
   const base64 = await fileToBase64(file);
 
-  const res = await fetch(`${API_URL}/api/upload/image`, {
+  const res = await fetch(apiUrl("/api/upload/image"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     credentials: "include",
     body: JSON.stringify({ image: base64 }),
   });
