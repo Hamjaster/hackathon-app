@@ -17,22 +17,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function Navbar() {
-    const { user, isLoading, logout } = useAuth();
+    const { user, logout } = useAuth();
     const location = useLocation();
     const [rulesOpen, setRulesOpen] = useState(false);
 
-    // Show loading skeleton while auth status is being determined
-    if (isLoading) {
-        return (
-            <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur">
-                <div className="container flex h-16 max-w-screen-2xl items-center justify-between px-4">
-                    <div className="h-8 w-48 bg-muted animate-pulse rounded" />
-                </div>
-            </header>
-        );
-    }
-
-    // Only hide navbar if user is explicitly null (not authenticated)
     if (!user) return null;
 
     return (

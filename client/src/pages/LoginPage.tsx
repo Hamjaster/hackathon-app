@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,7 +20,6 @@ import PasswordRecoveryDialog from "@/components/PasswordRecoveryDialog";
 export default function LoginPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const queryClient = useQueryClient();
 
     const [userId, setUserId] = useState("");
     const [password, setPassword] = useState("");
@@ -56,25 +54,7 @@ export default function LoginPage() {
 
             if (data.token) setAuthToken(data.token);
             localStorage.setItem("userId", data.userId);
-
-            // Immediately sync auth cache so protected routing sees logged-in state
-            queryClient.setQueryData(["/api/auth/status"], {
-                id: data.userId,
-                email: null,
-                firstName: null,
-                lastName: null,
-                profileImageUrl: null,
-                createdAt: null,
-                updatedAt: null,
-            });
-
-            // Invalidate auth query so Router sees the new user and doesn't redirect back to login
-            await queryClient.invalidateQueries({
-                queryKey: ["/api/auth/status"],
-            });
-
-            // Redirect to home (Router will now have fresh auth state from useAuth())
-            navigate("/", { replace: true });
+            navigate("/");
         } catch (err) {
             setError("Failed to login. Please try again.");
         } finally {

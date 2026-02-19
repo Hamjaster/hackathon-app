@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -28,7 +27,6 @@ import BackupCodesDisplay from "@/components/BackupCodesDisplay";
 export default function RegisterPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
-    const queryClient = useQueryClient();
 
     const [step, setStep] = useState<"email" | "otp" | "credentials">("email");
     const [email, setEmail] = useState("");
@@ -126,19 +124,7 @@ export default function RegisterPage() {
         if (credentials) {
             if (credentials.token) setAuthToken(credentials.token);
             localStorage.setItem("userId", credentials.userId);
-
-            // Immediately sync auth cache so protected routing sees logged-in state
-            queryClient.setQueryData(["/api/auth/status"], {
-                id: credentials.userId,
-                email: null,
-                firstName: null,
-                lastName: null,
-                profileImageUrl: null,
-                createdAt: null,
-                updatedAt: null,
-            });
         }
-        queryClient.invalidateQueries({ queryKey: ["auth"] });
         navigate("/", { replace: true });
     };
 

@@ -4,7 +4,7 @@ import { storage } from "./storage.js";
 import { api } from "./shared/routes.js";
 import { z } from "zod";
 import { rateLimit } from "./middleware/rateLimit.js";
-import { jwtAuth, signToken } from "./jwt.js";
+import { jwtAuth, signToken, verifyToken } from "./jwt.js";
 import { randomUUID, createHash } from "crypto";
 import { demoRouter } from "./demo-resolution.js";
 import { v2 as cloudinary } from "cloudinary";
@@ -270,11 +270,16 @@ export async function registerRoutes(
     });
 
     app.get("/api/auth/status", (req, res) => {
-        if (req.isAuthenticated() && req.user?.id) {
-            res.json({ authenticated: true, userId: req.user.id });
-        } else {
-            res.json({ authenticated: false });
+        const authHeader = req.headers.authorization;
+        const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+        if (!token) {
+            return res.status(401).json({ authenticated: false, message: "No token provided" });
         }
+        const payload = verifyToken(token);
+        if (!payload?.userId) {
+            return res.status(401).json({ authenticated: false, message: "Invalid or expired token" });
+        }
+        res.json({ authenticated: true, userId: payload.userId });
     });
 
     // Password Recovery Endpoints
