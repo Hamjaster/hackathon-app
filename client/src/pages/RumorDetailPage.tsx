@@ -1,5 +1,5 @@
 import React from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useRumor, useVoteEvidence } from "@/hooks/use-rumors";
 import { Navbar } from "@/components/Navbar";
 import { TrustScore } from "@/components/TrustScore";
@@ -426,15 +426,15 @@ function EvidenceCard({
                 )}
 
                 {item.content_type !== "image" && item.content_url && (
-                    <a
-                        href={item.content_url}
+                    <Link
+                        to={item.content_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs text-primary hover:underline w-fit"
                     >
                         <ExternalLink className="h-3 w-3" />
                         Source Link
-                    </a>
+                    </Link>
                 )}
 
                 <div className="flex items-center justify-between pt-2">

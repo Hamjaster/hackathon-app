@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -364,12 +364,12 @@ export default function RegisterPage() {
                 <CardFooter className="flex flex-col gap-2">
                     <div className="text-center text-sm text-muted-foreground">
                         Already have an account?{" "}
-                        <a
-                            href="/login"
+                        <Link
+                            to="/login"
                             className="text-primary hover:underline"
                         >
                             Login here
-                        </a>
+                        </Link>
                     </div>
                 </CardFooter>
             </Card>
