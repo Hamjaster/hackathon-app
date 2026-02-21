@@ -8,6 +8,7 @@ import { jwtAuth, signToken, verifyToken } from "./jwt.js";
 import { randomUUID, createHash } from "crypto";
 import { demoRouter } from "./demo-resolution.js";
 import { v2 as cloudinary } from "cloudinary";
+import { checkImageModeration, isSightengineConfigured } from "./sightengine.js";
 
 declare global {
     namespace Express {
@@ -56,45 +57,11 @@ export async function registerRoutes(
         }
     });
 
-    // Webhook: Cloudinary moderation (WebPurify) — clear image when rejected
-    app.post("/api/webhooks/cloudinary-moderation", async (req, res) => {
-        try {
-            const body = req.body as {
-                notification_type?: string;
-                moderation_status?: string;
-                moderation?: Array<{ kind?: string; status?: string }>;
-                secure_url?: string;
-                url?: string;
-            };
-            if (body?.notification_type !== "moderation") {
-                return res.status(200).json({ received: true });
-            }
-            const rejected =
-                body.moderation_status === "rejected" ||
-                body.moderation?.some((m) => m.status === "rejected");
-            if (!rejected) return res.status(200).json({ received: true });
-
-            const secureUrl = body.secure_url ?? body.url;
-            if (!secureUrl || typeof secureUrl !== "string") {
-                return res.status(200).json({ received: true });
-            }
-            const result = await storage.clearImageByModerationRejection(secureUrl);
-            return res.status(200).json({
-                received: true,
-                rumorsUpdated: result.rumorsUpdated,
-                evidenceUpdated: result.evidenceUpdated,
-            });
-        } catch (err) {
-            console.error("[Webhook] cloudinary-moderation error:", err);
-            return res.status(500).json({ received: false, error: "Internal error" });
-        }
-    });
-
     // Demo/Testing endpoints for time-based resolution
     // ⚠️ Remove in production!
     app.use("/api/demo", demoRouter);
 
-    // ─── Server-side Cloudinary upload with WebPurify moderation ───
+    // ─── Image upload: Sightengine moderation first, then Cloudinary storage ───
     cloudinary.config({
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
@@ -103,7 +70,6 @@ export async function registerRoutes(
 
     app.post("/api/upload/image", async (req: any, res) => {
         try {
-            // Authentication check
             if (!req.isAuthenticated || !req.isAuthenticated()) {
                 return res.status(401).json({ message: "Authentication required" });
             }
@@ -113,49 +79,36 @@ export async function registerRoutes(
                 return res.status(400).json({ message: "Missing 'image' field (base64 data URI expected)" });
             }
 
-            // Validate it looks like a data URI image
             if (!image.startsWith("data:image/")) {
                 return res.status(400).json({ message: "Invalid image format. Must be a base64 data URI." });
             }
 
-            // Upload to Cloudinary with WebPurify moderation
+            // 1) Moderation via Sightengine (nudity-2.1) before storing anywhere
+            if (isSightengineConfigured()) {
+                const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+                const imageBuffer = Buffer.from(base64Data, "base64");
+                const moderation = await checkImageModeration(imageBuffer);
+                if (!moderation.allowed) {
+                    return res.status(422).json({
+                        message: moderation.reason ?? "Image was rejected by content moderation. Please upload an appropriate image.",
+                        moderation_status: "rejected",
+                    });
+                }
+            }
+
+            // 2) Upload to Cloudinary (storage only; no Cloudinary moderation)
             const uploadResult = await cloudinary.uploader.upload(image, {
-                moderation: "webpurify",
                 folder: "campustrust",
                 resource_type: "image",
             });
 
-            // Check immediate moderation status
-            const moderationResult = uploadResult.moderation;
-            const isRejected = moderationResult?.some(
-                (m: any) => m.status === "rejected"
-            );
-
-            if (isRejected) {
-                // Delete the rejected image from Cloudinary
-                try {
-                    await cloudinary.uploader.destroy(uploadResult.public_id);
-                } catch (e) {
-                    console.error("[Upload] Failed to delete rejected image:", e);
-                }
-                return res.status(422).json({
-                    message: "Image was rejected by content moderation. Please upload an appropriate image.",
-                    moderation_status: "rejected",
-                });
-            }
-
-            // Image approved or pending async review
-            const isPending = moderationResult?.some(
-                (m: any) => m.status === "pending"
-            );
-
             return res.json({
                 secure_url: uploadResult.secure_url,
                 public_id: uploadResult.public_id,
-                moderation_status: isPending ? "pending" : "approved",
+                moderation_status: "approved",
             });
         } catch (err: any) {
-            console.error("[Upload] Cloudinary upload error:", err);
+            console.error("[Upload] Image upload error:", err);
             const message = err?.message || "Image upload failed";
             return res.status(500).json({ message });
         }

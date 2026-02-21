@@ -1,16 +1,17 @@
 # 🛡️ CampusTrust - Anonymous Rumor Verification System (NUST Olympiad Hackathon)
 
-A decentralized truth verification system using Bayesian inference, cryptographic anonymity, and game-theoretic incentives to separate fact from fiction on campus.
+A decentralized truth verification system using Bayesian inference, cryptographic anonymity, and game-theoretic incentives to separate fact from fiction on campus. **There is no central admin moderating or controlling the system** — everything is self-maintained and driven by algorithms and maths: trust scores, resolution, and incentives are computed by the protocol itself.
 
 ## 🎯 Features
 
 - **🔒 Anonymous Voting** - No identity tracking, cryptographic vote hashing
-- **📊 Bayesian Trust Scores** - Dynamic probability-based scoring
+- **📊 Bayesian Trust Scores** - Dynamic probability-based scoring (maths-driven, not moderator-driven)
 - **⚖️ Weighted Votes** - Reputation × Evidence Quality × Stake
 - **🤖 Bot Detection** - Statistical analysis of voting patterns
 - **🧠 AI Summarization** - Gemini API for content analysis
-- **📸 Evidence Uploads** - Cloudinary integration for images
+- **📸 Evidence Uploads** - Cloudinary storage with Sightengine image moderation
 - **📈 Real-time Updates** - Live trust score recalculation
+- **🔄 Self-Maintained** - No central authority; the system runs on algorithms and mathematical rules
 
 ## 🚀 Quick Start
 
@@ -168,6 +169,12 @@ VOTE_SALT=
 SESSION_SECRET=
 VITE_CLOUDINARY_CLOUD_NAME=
 VITE_CLOUDINARY_UPLOAD_PRESET=
+# Image moderation (Sightengine) — required for image uploads
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+SIGHTENGINE_API_USER=
+SIGHTENGINE_API_SECRET=
 ```
 
 See [.env.example](.env.example) for details.

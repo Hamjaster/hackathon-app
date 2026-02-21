@@ -280,9 +280,9 @@ export default function RumorDetailPage() {
                             <TabsTrigger value="evidence">
                                 Evidence Log
                             </TabsTrigger>
-                            <TabsTrigger value="dependencies">
+                            {/* <TabsTrigger value="dependencies">
                                 Dependencies
-                            </TabsTrigger>
+                            </TabsTrigger> */}
                             <TabsTrigger value="meta">Metadata</TabsTrigger>
                         </TabsList>
                         <AddEvidenceDialog

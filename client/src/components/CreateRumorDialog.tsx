@@ -113,7 +113,7 @@ export function CreateRumorDialog() {
             Submit Anonymous Rumor
           </DialogTitle>
           <DialogDescription>
-            Share news or claims about campus events. Your identity is cryptographically hashed — no one can trace this back to you.
+            Share news or claims about campus events. The protocol has no central moderator — trust and resolution are determined by algorithms and maths. Your identity is cryptographically hashed so no one can trace this back to you.
           </DialogDescription>
         </DialogHeader>
 

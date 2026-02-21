@@ -1,7 +1,7 @@
 /**
- * Cloudinary image upload helper
- * Uploads images through the server, which applies WebPurify content moderation
- * before accepting the image. Rejected images are blocked immediately.
+ * Image upload helper (Cloudinary storage).
+ * Uploads images through the server, which runs Sightengine content moderation
+ * before storing. Rejected images are blocked with 422.
  */
 
 import { apiUrl, getAuthHeaders } from "./api";
@@ -20,10 +20,9 @@ export async function uploadImage(file: File): Promise<string> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: "Image upload failed" }));
     if (res.status === 422) {
-      // Moderation rejection
       throw new Error(err.message || "Image rejected by content moderation");
     }
-    console.error("[Cloudinary] Upload failed:", err);
+    console.error("[Upload] Failed:", err);
     throw new Error(err.message || "Image upload failed");
   }
 
@@ -40,7 +39,7 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+/** True if image upload (and moderation) is available via the server. */
 export function isCloudinaryConfigured(): boolean {
-  // Server-side upload is always available as long as the server is running
   return true;
 }

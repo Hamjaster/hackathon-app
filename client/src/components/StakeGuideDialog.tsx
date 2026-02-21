@@ -44,7 +44,7 @@ const stakeContent = (
             <div className="text-sm">
                 <p className="font-medium text-foreground">Everything is anonymous</p>
                 <p className="text-muted-foreground mt-0.5">
-                    Your identity and votes are anonymous. Even admins cannot see your personal data or link your activity to you.
+                    Your identity and votes are anonymous. There is no central admin — the system is self-maintained by algorithms and maths, so no one can see your personal data or link your activity to you.
                 </p>
             </div>
         </div>

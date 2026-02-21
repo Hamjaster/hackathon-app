@@ -80,7 +80,7 @@ export interface IStorage {
             votersUpdated: number;
         }>;
     }>;
-    /** Clear image from rumors/evidence when moderation rejects (e.g. WebPurify). Returns counts cleared. */
+    /** Clear image from rumors/evidence when moderation rejects. Returns counts cleared. (Kept for optional/admin use.) */
     clearImageByModerationRejection(secureUrl: string): Promise<{ rumorsUpdated: number; evidenceUpdated: number }>;
 
     // Rumor Relationships (DAG)

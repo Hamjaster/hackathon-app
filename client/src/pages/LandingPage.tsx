@@ -27,7 +27,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="mt-6 max-w-md text-lg text-muted-foreground leading-relaxed">
-            The Campus Rumor System uses Bayesian inference and anonymous consensus to mathematically separate fact from fiction. No central authority. No identity tracking.
+            The Campus Rumor System uses Bayesian inference and anonymous consensus to mathematically separate fact from fiction. There is no central admin moderating or controlling the system — everything is self-maintained and driven by algorithms and maths. No central authority. No identity tracking.
           </p>
         </div>
 
@@ -35,12 +35,17 @@ export default function LandingPage() {
           <div className="rounded-lg border border-border/50 bg-card/50 p-4 backdrop-blur-sm">
             <Shield className="mb-2 h-6 w-6 text-primary" />
             <h3 className="font-semibold">Trust Scoring</h3>
-            <p className="text-sm text-muted-foreground">Dynamic probability scores update in real-time as evidence is crowdsourced.</p>
+            <p className="text-sm text-muted-foreground">Dynamic probability scores update in real-time as evidence is crowdsourced — driven by maths, not moderators.</p>
           </div>
           <div className="rounded-lg border border-border/50 bg-card/50 p-4 backdrop-blur-sm">
             <Lock className="mb-2 h-6 w-6 text-primary" />
             <h3 className="font-semibold">Cryptographic Anonymity</h3>
             <p className="text-sm text-muted-foreground">Vote hashes ensure one-person-one-vote without revealing your identity.</p>
+          </div>
+          <div className="rounded-lg border border-border/50 bg-card/50 p-4 backdrop-blur-sm sm:col-span-2">
+            <Activity className="mb-2 h-6 w-6 text-primary" />
+            <h3 className="font-semibold">Self-Maintained Protocol</h3>
+            <p className="text-sm text-muted-foreground">No central admin controls or moderates the system. Resolution, trust scores, and incentives are all computed by algorithms and mathematical rules — the protocol runs itself.</p>
           </div>
         </div>
       </div>
